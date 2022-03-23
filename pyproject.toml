@@ -1,0 +1,69 @@
+
+[tool.poetry]
+name = "xontrib-jupyter-shell"
+version = "0.0.1"
+description = "A shell for the Jupyter kernel."
+authors = ["Xonsh Dev <jnoortheen@gmail.com>"]
+
+license = "MIT"
+readme = "README.md"
+
+repository = "https://github.com/xonsh/xontrib-jupyter-shell"
+keywords = ['xontrib', 'xonsh']
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Shells",
+    "Topic :: System :: System Shells",
+    "Topic :: Terminals",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+]
+
+
+packages = [{ include = "xontrib" }]
+
+[tool.poetry.urls]
+Documentation = "https://github.com/xonsh/xontrib-jupyter-shell/blob/master/README.md"
+Code = "https://github.com/xonsh/xontrib-jupyter-shell"
+"Issue tracker" = "https://github.com/xonsh/xontrib-jupyter-shell/issues"
+
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+xonsh = ">=0.11"
+
+[tool.poetry.dev-dependencies]
+pytest = ">=6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+include = '\.pyi?$'
+force-exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.tox
+  | \.vscode
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | disk-cache.sqlite3
+)/
+'''
