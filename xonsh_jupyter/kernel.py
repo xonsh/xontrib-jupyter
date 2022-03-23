@@ -12,14 +12,13 @@ from collections.abc import Set
 from pprint import pformat
 
 import zmq
-from zmq.error import ZMQError
-from zmq.eventloop import ioloop, zmqstream
-
 from xonsh import __version__ as version
 from xonsh.built_ins import XSH
 from xonsh.commands_cache import predict_true
 from xonsh.completer import Completer
 from xonsh.main import setup
+from zmq.error import ZMQError
+from zmq.eventloop import ioloop, zmqstream
 
 MAX_SIZE = 8388608  # 8 Mb
 DELIM = b"<IDS|MSG>"
@@ -483,7 +482,7 @@ class XonshKernel:
         )
 
 
-if __name__ == "__main__":
+def main():
     setup(
         shell_type="jupyter",
         env={"PAGER": "cat"},
@@ -499,3 +498,7 @@ if __name__ == "__main__":
     shell = XSH.shell  # type:ignore
     kernel = shell.kernel = XonshKernel()
     kernel.start()
+
+
+if __name__ == "__main__":
+    main()
