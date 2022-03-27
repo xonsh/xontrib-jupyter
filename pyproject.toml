@@ -36,11 +36,14 @@ Code = "https://github.com/xonsh/xontrib-jupyter-shell"
 
 [tool.poetry.dependencies]
 python = ">=3.7"
-xonsh = ">=0.11"
+xonsh = {git = "https://github.com/xonsh/xonsh/", branch="main", optional=true}
 jupyter = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=6.0"
+
+[tool.poetry.extras]
+xonsh = ["xonsh"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
