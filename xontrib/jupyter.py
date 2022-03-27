@@ -1,6 +1,7 @@
 from xonsh.built_ins import XSH
 from xonsh.xonfig import xonfig_main
-from xonsh_jupter.alias import jupyter_kernel
+
+from xonsh_jupyter.alias import jupyter_kernel
 
 __all__ = ()
 

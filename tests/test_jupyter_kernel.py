@@ -139,9 +139,9 @@ def setup(monkeypatch):
         monkeypatch.setitem(sys.modules, "zmq", MagicMock())
         monkeypatch.setitem(sys.modules, "zmq.eventloop", MagicMock())
         monkeypatch.setitem(sys.modules, "zmq.error", MagicMock())
-        import xonsh.jupyter_kernel
+        from xonsh_jupyter import kernel
 
-        XonshKernel = xonsh.jupyter_kernel.XonshKernel
+        XonshKernel = kernel.XonshKernel
 
 
 @pytest.mark.parametrize("code, index, expected_args", EXPANSION_CASES)

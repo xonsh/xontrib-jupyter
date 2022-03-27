@@ -63,11 +63,7 @@ def test_xonfg_help(capsys, xession):
     "args",
     [
         ([]),
-        (
-            [
-                "info",
-            ]
-        ),
+        (["info"]),
     ],  # NOQA E231
 )
 def test_xonfig_info(args, xession):
@@ -75,7 +71,7 @@ def test_xonfig_info(args, xession):
     capout = xonfig_main(args)
     assert capout.startswith("+---")
     assert capout.endswith("---+\n")
-    pat = re.compile(r".*on jupyter\s+\|\s+false", re.MULTILINE | re.IGNORECASE)
+    pat = re.compile(r".*on jupyter\s+\|\s+True", re.MULTILINE | re.IGNORECASE)
     m = pat.search(capout)
     assert m
 
@@ -94,7 +90,7 @@ def test_xonfig_kernel_with_jupyter(monkeypatch, capsys, fake_lib, xession):
         cap_spec = json.load(open(spec_file))
 
     def mock_get_kernel_spec(*args, **kwargs):
-        raise jupyter_client.kernelspec.NoSuchKernel
+        raise jupyter_client.kernelspec.NoSuchKernel("xonsh")
 
     monkeypatch.setattr(
         jupyter_client.kernelspec.KernelSpecManager,
@@ -117,9 +113,4 @@ def test_xonfig_kernel_with_jupyter(monkeypatch, capsys, fake_lib, xession):
     assert cap_spec
     assert cap_spec["language"] == "xonsh"
     assert strip_sep(cap_spec["argv"][0]) == strip_sep(sys.executable)
-    assert cap_spec["argv"][2] == "xonsh.jupyter_kernel"
-
-
-def test_xonfig_kernel_no_jupyter(capsys, xession):
-    with pytest.raises(ImportError):
-        rc = xonfig_main(["jupyter-kernel"])  # noqa F841
+    assert cap_spec["argv"][2] == "xonsh_jupyter.kernel"
