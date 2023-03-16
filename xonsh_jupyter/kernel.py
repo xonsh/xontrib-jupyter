@@ -20,6 +20,8 @@ from xonsh.main import setup
 from zmq.error import ZMQError
 from zmq.eventloop import ioloop, zmqstream
 
+from xonsh_jupyter.shell import JupyterShell
+
 MAX_SIZE = 8388608  # 8 Mb
 DELIM = b"<IDS|MSG>"
 
@@ -481,10 +483,14 @@ class XonshKernel:
             identities=identities,
         )
 
+        # once we are done, send a signal that we are idle
+        content = {"execution_state": "idle"}
+        self.send(self.iopub_stream, "status", content, parent_header=message["header"])
+
 
 def main():
     setup(
-        shell_type="jupyter",
+        shell_type=JupyterShell,
         env={"PAGER": "cat"},
         aliases={"less": "cat"},
         xontribs=["coreutils"],
