@@ -14,7 +14,7 @@ To install use pip:
 
 ```bash
 xpip install xontrib-jupyter-shell
-# or: xpip install -U git+https://github.com/xonsh/xontrib-jupyter-shell
+# or: xpip install -U git+https://github.com/xonsh/xontrib-jupyter
 ```
 
 ## Usage
