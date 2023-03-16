@@ -10,9 +10,9 @@ If you like the idea click ⭐ on the repo and <a href="https://twitter.com/inte
 
 ## Installation
 
-To install use pip:
+To install use [xpip](https://xon.sh/aliases.html#xpip):
 
-```bash
+```xsh
 xpip install xontrib-jupyter-shell
 # or: xpip install -U git+https://github.com/xonsh/xontrib-jupyter
 
