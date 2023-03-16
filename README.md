@@ -57,7 +57,12 @@ Available kernels:
   xonsh      <env_prefix>\share\jupyter\kernels\xonsh
 ```
 
-## Releasing your package
+### Jupyter environments that support xonsh
+
+* [Jupyter Notebook](https://jupyter.org/) - the classic notebook web interface.
+* [Euporie](https://github.com/joouha/euporie) - a terminal based interactive computing environment.
+
+## Releasing your package 
 
 - Bump the version of your package.
 - Create a GitHub release (The release notes are automatically generated as a draft release after each push).
