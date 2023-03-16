@@ -1,7 +1,7 @@
 
 [tool.poetry]
 name = "xontrib-jupyter-shell"
-version = "0.0.2"
+version = "0.0.3"
 description = "A shell for the Jupyter kernel."
 authors = ["Xonsh Dev <jnoortheen@gmail.com>"]
 
