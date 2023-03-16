@@ -23,6 +23,12 @@ xonfig jupyter-kernel --user  # Install kernel spec in user config directory.
 
 Check the installation:
 ```xsh
+jupyter kernelspec list
+# Available kernels:
+#  python3    /opt/homebrew/lib/python3.11/site-packages/ipykernel/resources
+#  xonsh      /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh
+
+xontrib load jupyter
 xonfig jupyter-kernel
 # Installing Jupyter kernel spec:
 #  root: None
@@ -33,10 +39,6 @@ xonfig info
 #| jupyter          | True
 #| jupyter kernel   | /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh
 
-jupyter kernelspec list
-# Available kernels:
-#  python3    /opt/homebrew/lib/python3.11/site-packages/ipykernel/resources
-#  xonsh      /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh
 ```
 
 ## Usage
