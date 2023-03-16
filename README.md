@@ -15,45 +15,44 @@ To install use pip:
 ```bash
 xpip install xontrib-jupyter-shell
 # or: xpip install -U git+https://github.com/xonsh/xontrib-jupyter
+
+xontrib load jupyter
+xonfig jupyter-kernel --help  # options for installing
+xonfig jupyter-kernel -u
+xonfig jupyter-kernel
+# Installing Jupyter kernel spec:
+#  root: None
+#  prefix: /PATH_TO_ENV_PREFIX/
+#  as user: False
+
+xonfig info
+#| jupyter          | True                                                |
+#| jupyter kernel   | /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh            |
+
+jupyter kernelspec list
+# Available kernels:
+#  python3    /opt/homebrew/lib/python3.11/site-packages/ipykernel/resources
+#  xonsh      /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh
 ```
 
 ## Usage
 
-```bash
-xontrib load jupyter
-xonfig jupyter-kernel
-# Installing Jupyter kernel spec:
-#  root: None
-#  prefix: <env_prefix>
-#  as user: False
-```
+### Jupyter
 
-`<env_prefix>` is the path prefix of the Jupyter and Xonsh
-environment. `xonfig jupyter-kernel --help` shows options for installing
-the kernel spec in the user config folder or in a non-standard
-environment prefix.
-
-You can confirm the status of the installation:
-
-``` xsh
-xonfig info
-#| jupyter          | True                                                |
-#| jupyter kernel   | <env_prefix>\share\jupyter\kernels\xonsh            |
-```
-
-Or:
+Just run [Jupyter Notebook or JupyterLab](https://jupyter.org/) and choose xonsh:
 
 ```xsh
-jupyter kernelspec list
-#Available kernels:
-#  python3    <env_prefix>\share\jupyter\kernels\python3
-#  xonsh      <env_prefix>\share\jupyter\kernels\xonsh
+jupyter notebook
+jupyter lab
 ```
 
-### Jupyter environments that support xonsh
+### Euporie
 
-* [Jupyter Notebook](https://jupyter.org/) - the classic notebook web interface.
-* [Euporie](https://github.com/joouha/euporie) - a terminal based interactive computing environment.
+[Euporie](https://github.com/joouha/euporie) is a terminal based interactive computing environment.
+
+```xsh
+euporie notebook
+```
 
 ## Releasing your package 
 
