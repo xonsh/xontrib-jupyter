@@ -20,12 +20,12 @@ xpip install xontrib-jupyter-shell
 ## Usage
 
 ```bash
-$ xontrib load jupyter
-$ xonfig jupyter-kernel
-Installing Jupyter kernel spec:
-  root: None
-  prefix: <env_prefix>
-  as user: False
+xontrib load jupyter
+xonfig jupyter-kernel
+# Installing Jupyter kernel spec:
+#  root: None
+#  prefix: <env_prefix>
+#  as user: False
 ```
 
 `<env_prefix>` is the path prefix of the Jupyter and Xonsh
@@ -35,26 +35,19 @@ environment prefix.
 
 You can confirm the status of the installation:
 
-``` xonshcon
-$ xonfig info
-+------------------+-----------------------------------------------------+
-| xonsh            | 0.9.21                                              |
-| Git SHA          | d42b4140                                            |
-
-               . . . . .
-
-| on jupyter       | True                                                |
-| jupyter kernel   | <env_prefix>\share\jupyter\kernels\xonsh            |
-+------------------+-----------------------------------------------------+
+``` xsh
+xonfig info
+#| jupyter          | True                                                |
+#| jupyter kernel   | <env_prefix>\share\jupyter\kernels\xonsh            |
 ```
 
 Or:
 
-``` xonshcon
-$ jupyter kernelspec list
-Available kernels:
-  python3    <env_prefix>\share\jupyter\kernels\python3
-  xonsh      <env_prefix>\share\jupyter\kernels\xonsh
+```xsh
+jupyter kernelspec list
+#Available kernels:
+#  python3    <env_prefix>\share\jupyter\kernels\python3
+#  xonsh      <env_prefix>\share\jupyter\kernels\xonsh
 ```
 
 ### Jupyter environments that support xonsh
