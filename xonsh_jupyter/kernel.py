@@ -483,6 +483,10 @@ class XonshKernel:
             identities=identities,
         )
 
+        # once we are done, send a signal that we are idle
+        content = {"execution_state": "idle"}
+        self.send(self.iopub_stream, "status", content, parent_header=message["header"])
+
 
 def main():
     setup(
