@@ -51,7 +51,8 @@ jupyter lab
 [Euporie](https://github.com/joouha/euporie) is a terminal based interactive computing environment.
 
 ```xsh
-euporie notebook
+euporie-notebook
+# Change the kernel to xonsh
 ```
 
 ## Releasing your package 
