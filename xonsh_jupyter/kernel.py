@@ -20,6 +20,8 @@ from xonsh.main import setup
 from zmq.error import ZMQError
 from zmq.eventloop import ioloop, zmqstream
 
+from xonsh_jupyter.shell import JupyterShell
+
 MAX_SIZE = 8388608  # 8 Mb
 DELIM = b"<IDS|MSG>"
 
@@ -484,7 +486,7 @@ class XonshKernel:
 
 def main():
     setup(
-        shell_type="jupyter",
+        shell_type=JupyterShell,
         env={"PAGER": "cat"},
         aliases={"less": "cat"},
         xontribs=["coreutils"],
