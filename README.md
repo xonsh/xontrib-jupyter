@@ -26,8 +26,8 @@ xonfig jupyter-kernel
 #  as user: False
 
 xonfig info
-#| jupyter          | True                                                |
-#| jupyter kernel   | /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh            |
+#| jupyter          | True
+#| jupyter kernel   | /PATH_TO_ENV_PREFIX/share/jupyter/kernels/xonsh
 
 jupyter kernelspec list
 # Available kernels:
