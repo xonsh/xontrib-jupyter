@@ -19,4 +19,4 @@ def jupyter_info():
         jup_kernel = jup_ksm.find_kernel_specs().get("xonsh")
     except Exception:
         pass
-    return [("on jupyter", jup_ksm is not None), ("jupyter kernel", jup_kernel)]
+    return [("jupyter", jup_ksm is not None), ("jupyter kernel", jup_kernel)]
