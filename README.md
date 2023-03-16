@@ -17,8 +17,8 @@ xpip install xontrib-jupyter-shell
 # or: xpip install -U git+https://github.com/xonsh/xontrib-jupyter
 
 xontrib load jupyter
-xonfig jupyter-kernel --help  # options for installing
-xonfig jupyter-kernel -u
+xonfig jupyter-kernel --help  # Options for installing.
+xonfig jupyter-kernel --user  # Install kernel spec in user config directory.
 xonfig jupyter-kernel
 # Installing Jupyter kernel spec:
 #  root: None
