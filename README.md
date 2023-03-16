@@ -57,9 +57,10 @@ euporie-notebook
 
 ## Releasing your package 
 
-- Bump the version of your package.
-- Create a GitHub release (The release notes are automatically generated as a draft release after each push).
-- And publish with `poetry publish --build` or `twine`
+1. Bump the version of the package.
+2. The release notes are automatically generated as a draft release after each PR.
+3. Create a GitHub release. 
+4. Publish with `poetry publish --build` or `twine`.
 
 ## Credits
 
