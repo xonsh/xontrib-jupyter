@@ -49,6 +49,7 @@ Just run [Jupyter Notebook or JupyterLab](https://jupyter.org/) and choose xonsh
 
 ```xsh
 jupyter notebook
+# or
 jupyter lab
 ```
 
@@ -58,20 +59,22 @@ jupyter lab
 
 ```xsh
 euporie-notebook
+# or
+euporie-console
 # Change the kernel to xonsh
 ```
 
-## Releasing your package 
+## Releasing your package
 
 1. Bump the version of the package `poetry version patch`
 2. Publish with `poetry publish --build`.
 3. Push the changes to the repo
-       
+
     ```bash
     git tag $(poetry version --short)
     git add .
     git commit -am "new release $(poetry version --short)"
-    git push 
+    git push
     git push --tags
     ```
 
