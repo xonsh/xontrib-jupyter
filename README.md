@@ -49,6 +49,7 @@ Just run [Jupyter Notebook or JupyterLab](https://jupyter.org/) and choose xonsh
 
 ```xsh
 jupyter notebook
+# or
 jupyter lab
 ```
 
@@ -58,6 +59,8 @@ jupyter lab
 
 ```xsh
 euporie-notebook
+# or
+euporie-console
 # Change the kernel to xonsh
 ```
 
