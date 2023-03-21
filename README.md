@@ -83,4 +83,5 @@ euporie-console
 
 ## Credits
 
-This package was created with [xontrib cookiecutter template](https://github.com/xonsh/xontrib-cookiecutter).
+* This package was created with [xontrib cookiecutter template](https://github.com/xonsh/xontrib-cookiecutter).
+* [awesome-jupyter](https://github.com/markusschanta/awesome-jupyter) - A curated list of awesome Jupyter projects, libraries and resources.
