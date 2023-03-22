@@ -71,7 +71,7 @@ def test_xonfig_info(args, xession):
     capout = xonfig_main(args)
     assert capout.startswith("+---")
     assert capout.endswith("---+\n")
-    pat = re.compile(r".*on jupyter\s+\|\s+True", re.MULTILINE | re.IGNORECASE)
+    pat = re.compile(r".*jupyter\s+\|\s+True", re.MULTILINE | re.IGNORECASE)
     m = pat.search(capout)
     assert m
 
