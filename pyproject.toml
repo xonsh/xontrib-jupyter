@@ -42,6 +42,9 @@ jupyter-client = ">=8"
 [tool.poetry.dev-dependencies]
 pytest = ">=6.0"
 
+[tool.poetry.group.dev.dependencies]
+poethepoet = "^0.19.0"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -68,3 +71,16 @@ force-exclude = '''
   | disk-cache.sqlite3
 )/
 '''
+
+[tool.poe.executor]
+type = "simple"
+
+[tool.poe.tasks]
+release = [
+    { shell = "git tag $(poetry version --short)" },
+    { cmd = "git add ." },
+    { shell = 'git commit -am "new release $(poetry version --short)' },
+    { cmd = "git push" },
+    { cmd = "git push --tags" },
+    { cmd = "poetry publish --build" },
+]
