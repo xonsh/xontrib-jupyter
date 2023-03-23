@@ -84,3 +84,15 @@ release = [
     { cmd = "git push --tags" },
     { cmd = "poetry publish --build" },
 ]
+
+[tool.ruff]
+select = [
+    "E",
+    "F",
+    "B", # flake8-bugbear
+    "I", # isort
+    "UP", # pyupgrade
+    "SIM", # simplify
+    "TCH", # flake8-type-checking
+    "RUF", # ruff specific rules
+]
