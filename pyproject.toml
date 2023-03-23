@@ -35,9 +35,9 @@ Code = "https://github.com/xonsh/xontrib-jupyter-shell"
 
 
 [tool.poetry.dependencies]
-python = ">=3.7"
+python = ">=3.8"
 xonsh = ">=0.12"
-jupyter = "^1.0.0"
+jupyter-client = ">=8"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=6.0"
