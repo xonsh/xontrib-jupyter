@@ -3,7 +3,6 @@ from inspect import signature
 from unittest.mock import MagicMock
 
 import pytest
-from xonsh.aliases import Aliases
 from xonsh.completer import Completer
 
 XonshKernel = None
@@ -158,7 +157,7 @@ def test_completion_alias_expansion(
     kernel = MagicMock()
     kernel.completer = xonsh_completer_mock
 
-    monkeypatch.setattr(xession, "aliases", Aliases(gb=["git branch"]))
+    xession.aliases["gb"]="git branch"
     monkeypatch.setattr(xession.shell, "ctx", None, raising=False)
 
     XonshKernel.do_complete(kernel, code, index)
