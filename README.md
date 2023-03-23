@@ -63,6 +63,31 @@ euporie-notebook --kernel-name xonsh  # or change the kernel in UI
 euporie-console --kernel-name xonsh  # or change the kernel in UI
 ```
 
+## Testing 
+
+- install the project with its dependencies
+```bash
+poetry install
+poetry install --only-root
+```
+- now start the xonsh shell
+
+```sh
+xonsh --no-rc
+```
+
+- inside the xonsh shell, you can load the jupyter xontrib and install the kernel
+
+```sh
+xontrib load jupyter
+
+# this will install the kernel
+xonfig jupyter-kernel --user
+
+# now start a notebook and choose xonsh kernel
+jupyter notebook
+```
+
 ## Releasing your package
 
 1. Bump the version of the package `poetry version patch`

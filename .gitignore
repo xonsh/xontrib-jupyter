@@ -131,3 +131,6 @@ dmypy.json
 
 # no need for libraries to keep poetry.lock
 poetry.lock
+
+# test files
+*.ipynb
