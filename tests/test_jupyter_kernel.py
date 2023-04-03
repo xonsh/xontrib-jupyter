@@ -157,7 +157,7 @@ def test_completion_alias_expansion(
     kernel = MagicMock()
     kernel.completer = xonsh_completer_mock
 
-    xession.aliases["gb"]="git branch"
+    xession.aliases["gb"] = "git branch"
     monkeypatch.setattr(xession.shell, "ctx", None, raising=False)
 
     XonshKernel.do_complete(kernel, code, index)

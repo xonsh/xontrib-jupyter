@@ -63,7 +63,7 @@ euporie-notebook --kernel-name xonsh  # or change the kernel in UI
 euporie-console --kernel-name xonsh  # or change the kernel in UI
 ```
 
-## Testing 
+## Testing
 
 - install the project with its dependencies
 ```bash
