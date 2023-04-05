@@ -3,6 +3,10 @@ Xonsh provides a kernel for Jupyter Notebook and Lab so you can execute
 xonsh commands in a notebook cell without any additional magic.
 </p>
 
+<p>
+<img src="https://repository-images.githubusercontent.com/471969357/59a14abc-8966-4d97-a40c-80a4d444238c">
+</p>
+
 <p align="center">
 If you like the idea click ⭐ on the repo and <a href="https://twitter.com/intent/tweet?text=Nice%20xontrib%20for%20the%20xonsh%20shell!&url=https://github.com/xonsh/xontrib-jupyter-shell" target="_blank">tweet</a>.
 </p>
