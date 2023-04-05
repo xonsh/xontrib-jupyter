@@ -1,6 +1,6 @@
 <p align="center">
-Xonsh provides a kernel for Jupyter Notebook and Lab so you can execute
-xonsh commands in a notebook cell without any additional magic.
+Xonsh kernel for Jupyter Notebook and Jupyter Lab allows to execute
+xonsh shell commands in a notebook cell.
 </p>
 
 <p>
