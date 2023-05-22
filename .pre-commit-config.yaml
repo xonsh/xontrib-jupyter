@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.0.260"
+    rev: "v0.0.269"
     hooks:
       - id: ruff
 
@@ -11,7 +11,7 @@ repos:
         language_version: python3.8
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.1.1" # Use the sha / tag you want to point at
+    rev: "v1.3.0" # Use the sha / tag you want to point at
     hooks:
       - id: mypy
         args: [ "--allow-untyped-globals", "--ignore-missing-imports" ]
@@ -28,7 +28,7 @@ repos:
       - id: check-added-large-files
 
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v2.1.1
+    rev: v2.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
