@@ -491,7 +491,10 @@ class XonshKernel:
 def main():
     setup(
         shell_type=JupyterShell,
-        env={"PAGER": "cat"},
+        env={
+            "PAGER": "cat",
+            "AWS_PAGER": "cat",  # https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager
+        },
         aliases={"less": "cat"},
         xontribs=["coreutils"],
         threadable_predictors={"git": predict_true, "man": predict_true},
@@ -501,6 +504,7 @@ def main():
         # we supply our own, because we can
         XSH.aliases["cat"] = "xonsh-cat"  # type:ignore
         XSH.env["PAGER"] = "xonsh-cat"  # type:ignore
+        XSH.env["AWS_PAGER"] = "xonsh-cat"  # type:ignore
     shell = XSH.shell  # type:ignore
     kernel = shell.kernel = XonshKernel()
     kernel.start()
