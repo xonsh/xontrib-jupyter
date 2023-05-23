@@ -493,6 +493,7 @@ def main():
         shell_type=JupyterShell,
         env={
             "PAGER": "cat",
+            "AWS_PAGER": "cat",  # https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager
             "XONSH_CAPTURE_ALWAYS": True,
         },
         aliases={"less": "cat"},
