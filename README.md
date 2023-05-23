@@ -108,7 +108,7 @@ jupyter notebook
 
 ### Uncaptured output
 
-Some tools like [AWS CLI](https://aws.amazon.com/cli/) using the uncapturable `less` pager to show the output by default. In these cases you ned to find the way to disable the pager e.g. set [`$AWS_PAGER = 'cat'`](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager) for AWS CLI.
+Some tools like [AWS CLI](https://aws.amazon.com/cli/) using the uncapturable `less` pager to show the output by default. In these cases you need to find the way to disable the pager e.g. set [`$AWS_PAGER = 'cat'`](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager) for AWS CLI.
 
 ## Credits
 
