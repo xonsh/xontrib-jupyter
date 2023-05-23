@@ -104,6 +104,12 @@ jupyter notebook
 3. The release notes are automatically generated as a draft release after each PR.
 4. Create a GitHub release from the draft release against the newly pushed tag
 
+## Known issues
+
+### Uncaptured stdout
+
+This kernel uses xonsh with [`$XONSH_CAPTURE_ALWAYS = True`](https://xon.sh/envvars.html#xonsh-capture-always) and some commands that have waiting for user input could be uncaptured.
+
 ## Credits
 
 * This package was created with [xontrib cookiecutter template](https://github.com/xonsh/xontrib-cookiecutter).
