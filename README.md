@@ -104,6 +104,12 @@ jupyter notebook
 3. The release notes are automatically generated as a draft release after each PR.
 4. Create a GitHub release from the draft release against the newly pushed tag
 
+## Known issues
+
+### Uncaptured output
+
+Some tools like [AWS CLI](https://aws.amazon.com/cli/) using the uncapturable `less` pager to show the output by default. In these cases you need to find the way to disable the pager e.g. set [`$AWS_PAGER = 'cat'`](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager) for AWS CLI.
+
 ## Credits
 
 * This package was created with [xontrib cookiecutter template](https://github.com/xonsh/xontrib-cookiecutter).
