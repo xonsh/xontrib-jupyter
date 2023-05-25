@@ -76,13 +76,16 @@ force-exclude = '''
 type = "simple"
 
 [tool.poe.tasks]
+push-tags = [
+    { cmd = "git push" },
+    { cmd = "git push --tags" },
+    { cmd = "poetry publish --build" },
+]
 release = [
     { shell = "git tag $(poetry version --short)" },
     { cmd = "git add ." },
     { shell = 'git commit -am "new release $(poetry version --short)' },
-    { cmd = "git push" },
-    { cmd = "git push --tags" },
-    { cmd = "poetry publish --build" },
+    { ref = "push-tags" },
 ]
 
 [tool.ruff]
