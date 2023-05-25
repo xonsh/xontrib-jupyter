@@ -1,14 +1,14 @@
 
 [tool.poetry]
-name = "xontrib-jupyter-shell"
-version = "0.2.0"
-description = "A shell for the Jupyter kernel."
+name = "xontrib-jupyter"
+version = "0.3.0"
+description = "Xonsh kernel for Jupyter Notebook and Jupyter Lab allows to execute xonsh shell commands in a notebook cell"
 authors = ["Xonsh Dev <jnoortheen@gmail.com>"]
 
 license = "MIT"
 readme = "README.md"
 
-repository = "https://github.com/xonsh/xontrib-jupyter-shell"
+repository = "https://github.com/xonsh/xontrib-jupyter"
 keywords = ['xontrib', 'xonsh']
 classifiers = [
     "Intended Audience :: Developers",
@@ -29,9 +29,9 @@ classifiers = [
 packages = [{ include = "xontrib" }, { include = "xonsh_jupyter" }]
 
 [tool.poetry.urls]
-Documentation = "https://github.com/xonsh/xontrib-jupyter-shell/blob/master/README.md"
-Code = "https://github.com/xonsh/xontrib-jupyter-shell"
-"Issue tracker" = "https://github.com/xonsh/xontrib-jupyter-shell/issues"
+Documentation = "https://github.com/xonsh/xontrib-jupyter/blob/master/README.md"
+Code = "https://github.com/xonsh/xontrib-jupyter"
+"Issue tracker" = "https://github.com/xonsh/xontrib-jupyter/issues"
 
 
 [tool.poetry.dependencies]
@@ -89,9 +89,9 @@ release = [
 select = [
     "E",
     "F",
-    "B", # flake8-bugbear
-    "I", # isort
-    "UP", # pyupgrade
+    "B",   # flake8-bugbear
+    "I",   # isort
+    "UP",  # pyupgrade
     "SIM", # simplify
     "TCH", # flake8-type-checking
     "RUF", # ruff specific rules
