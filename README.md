@@ -103,7 +103,6 @@ jupyter notebook
 
 3. The release notes are automatically generated as a draft release after each PR.
 4. Create a GitHub release from the draft release against the newly pushed tag
-5. Publish the package with `poetry publish`
 
 ## Known issues
 
