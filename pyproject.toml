@@ -82,9 +82,9 @@ push-tags = [
     { cmd = "poetry publish --build" },
 ]
 release = [
-    { shell = "git tag $(poetry version --short)" },
+    { shell = "git tag v$(poetry version --short)" },
     { cmd = "git add ." },
-    { shell = 'git commit -am "new release $(poetry version --short)' },
+    { shell = 'git commit -am "new release $(poetry version --short)"' },
     { ref = "push-tags" },
 ]
 
