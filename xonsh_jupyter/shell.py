@@ -1,4 +1,5 @@
 """An interactive shell for the Jupyter kernel."""
+
 import io
 import sys
 

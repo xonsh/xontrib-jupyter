@@ -1,4 +1,5 @@
 """Hooks for Jupyter Xonsh Kernel."""
+
 import datetime
 import errno
 import hashlib
