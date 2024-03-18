@@ -1,17 +1,17 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.1.14"
+    rev: "v0.3.3"
     hooks:
       - id: ruff
 
   - repo: https://github.com/psf/black
-    rev: 24.1.1
+    rev: 24.3.0
     hooks:
       - id: black
         language_version: python3.8
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.8.0" # Use the sha / tag you want to point at
+    rev: "v1.9.0" # Use the sha / tag you want to point at
     hooks:
       - id: mypy
         args: [ "--allow-untyped-globals", "--ignore-missing-imports" ]
