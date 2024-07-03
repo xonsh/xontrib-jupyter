@@ -10,7 +10,7 @@ xonfig_main.add_command(jupyter_kernel)
 
 # register xonfig info hook
 @XSH.builtins.events.on_xonfig_info_requested
-def jupyter_info():
+def jupyter_info(**kwargs):
     jup_ksm = jup_kernel = None
     try:
         from jupyter_client.kernelspec import KernelSpecManager
