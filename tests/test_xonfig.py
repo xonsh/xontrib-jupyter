@@ -64,7 +64,7 @@ def test_xonfg_help(capsys, xession):
     [
         ([]),
         (["info"]),
-    ],  # NOQA E231
+    ],  # E231
 )
 def test_xonfig_info(args, xession):
     """info works, and reports no jupyter if none in environment"""
@@ -109,7 +109,7 @@ def test_xonfig_kernel_with_jupyter(monkeypatch, capsys, fake_lib, xession):
     assert rc == 0
     capout = capsys.readouterr().out
     assert "Jupyter" in capout
-    assert "xonsh" == cap_args["args"][2]
+    assert cap_args["args"][2] == "xonsh"
     assert cap_spec
     assert cap_spec["language"] == "xonsh"
     assert strip_sep(cap_spec["argv"][0]) == strip_sep(sys.executable)
