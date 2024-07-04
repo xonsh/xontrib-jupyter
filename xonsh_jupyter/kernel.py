@@ -375,7 +375,7 @@ class XonshKernel:
             return {"status": "abort", "execution_count": self.execution_count}
 
         rtn = 0 if (hist is None or len(hist) == 0) else hist.rtns[-1]
-        if 0 < rtn:
+        if rtn > 0:
             message = {
                 "status": "error",
                 "execution_count": self.execution_count,
