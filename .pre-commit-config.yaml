@@ -3,7 +3,11 @@ repos:
     rev: "v0.5.0"
     hooks:
       - id: ruff
-
+        args: [., --fix, --exit-non-zero-on-fix]
+        pass_filenames: false
+      - id: ruff-format
+        args: [.]
+        pass_filenames: false
   - repo: https://github.com/psf/black
     rev: 24.4.2
     hooks:
