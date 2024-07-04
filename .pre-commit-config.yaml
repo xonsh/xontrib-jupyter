@@ -1,6 +1,7 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.5.0"
+    # Ruff version.
+    rev: 'v0.5.0'
     hooks:
       - id: ruff
         args: [., --fix, --exit-non-zero-on-fix]
@@ -8,32 +9,23 @@ repos:
       - id: ruff-format
         args: [.]
         pass_filenames: false
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
-    hooks:
-      - id: black
-        language_version: python3.8
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.10.1" # Use the sha / tag you want to point at
+    rev: 'v1.10.1'  # Use the sha / tag you want to point at
     hooks:
       - id: mypy
-        args: [ "--allow-untyped-globals", "--ignore-missing-imports" ]
-        additional_dependencies: [ types-all ]
-
+        pass_filenames: false
+        args: ['xontrib', '--ignore-missing-imports']
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
       - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+              docs/_static/.+
+          )$
+      - id: check-case-conflict
+      - id: check-merge-conflict
       - id: check-yaml
       - id: check-toml
-      - id: check-merge-conflict
-      - id: debug-statements
       - id: check-added-large-files
-
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.2.0
-    hooks:
-      - id: conventional-pre-commit
-        stages: [commit-msg]
-        args: [] # optional: list of Conventional Commits types to allow
