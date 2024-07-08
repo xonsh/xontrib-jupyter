@@ -19,8 +19,12 @@ def jupyter_kernel(
     """
     import json
     import os
+    import pathlib
+    import shutil
     import sys
     import tempfile
+
+    from .resources import LOGO_PATH
 
     try:
         from jupyter_client.kernelspec import KernelSpecManager, NoSuchKernel
@@ -66,6 +70,8 @@ def jupyter_kernel(
         os.chmod(d, 0o755)  # Starts off as 700, not user readable
         with open(os.path.join(d, "kernel.json"), "w") as f:
             json.dump(spec, f, sort_keys=True)
+
+        shutil.copyfile(LOGO_PATH, pathlib.Path(d) / LOGO_PATH.name)
 
         print("Installing Jupyter kernel spec:")
         print(f"  root: {root!r}")
