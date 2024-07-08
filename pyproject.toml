@@ -1,7 +1,7 @@
 
 [tool.poetry]
 name = "xontrib-jupyter"
-version = "0.3.1"
+version = "0.3.2"
 description = "Xonsh kernel for Jupyter Notebook and Jupyter Lab allows to execute xonsh shell commands in a notebook cell"
 authors = ["Xonsh Dev <jnoortheen@gmail.com>"]
 
