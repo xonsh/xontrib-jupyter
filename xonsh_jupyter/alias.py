@@ -55,7 +55,8 @@ def jupyter_kernel(
         old_jup_kernel = ksm.get_kernel_spec(XONSH_JUPYTER_KERNEL)
         if not old_jup_kernel.resource_dir.startswith(prefix):
             print(
-                f"Removing existing Jupyter kernel found at {old_jup_kernel.resource_dir}"
+                f"Removing existing Jupyter kernel found" 
+                + f"at {old_jup_kernel.resource_dir}"
             )
         ksm.remove_kernel_spec(XONSH_JUPYTER_KERNEL)
     except NoSuchKernel:
