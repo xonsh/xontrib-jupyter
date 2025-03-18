@@ -33,7 +33,8 @@ def fake_lib(monkeypatch):
     monkeypatch.syspath_prepend(fake_lib_path)
     yield
 
-    # monkeypatch will have restored sys.path, but it's up to us to purge the imported modules
+    # monkeypatch will have restored sys.path, 
+    # but it's up to us to purge the imported modules
     fake_packages = tuple(f.name for f in os.scandir(fake_lib_path) if os.path.isdir(f))
     modules_to_delete = []
 
