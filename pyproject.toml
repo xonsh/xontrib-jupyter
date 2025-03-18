@@ -35,7 +35,7 @@ Documentation = "https://github.com/xonsh/xontrib-jupyter/blob/master/README.md"
 Code = "https://github.com/xonsh/xontrib-jupyter"
 "Issue tracker" = "https://github.com/xonsh/xontrib-jupyter/issues"
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pytest>=6.0",
 ]
