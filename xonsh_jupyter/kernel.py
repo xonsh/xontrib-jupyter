@@ -237,7 +237,7 @@ class XonshKernel:
 
         messages = list(map(dump_bytes, [header, parent_header, metadata, content]))
         signature = self.sign(messages)
-        parts = [DELIM, signature] + messages
+        parts = [DELIM, signature, *messages]
         if identities:
             parts = identities + parts
         self.dprint(3, "send parts:", parts)
