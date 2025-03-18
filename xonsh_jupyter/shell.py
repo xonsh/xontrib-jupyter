@@ -3,8 +3,8 @@
 import io
 import sys
 
-from xonsh.shells.base_shell import BaseShell
 from xonsh.built_ins import XSH
+from xonsh.shells.base_shell import BaseShell
 
 
 class StdJupyterRedirectBuf(io.RawIOBase):
