@@ -35,8 +35,8 @@ Code = "https://github.com/xonsh/xontrib-jupyter"
 
 
 [tool.poetry.dependencies]
-python = ">=3.8"
-xonsh = ">=0.12"
+python = ">=3.9"
+xonsh = ">=0.19"
 jupyter-client = ">=8"
 
 [tool.poetry.dev-dependencies]
