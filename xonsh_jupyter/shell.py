@@ -145,4 +145,4 @@ class JupyterShell(BaseShell):
         return rtn
 
 
-__all__ = (JupyterShell,)
+__all__ = (JupyterShell,)  # type: ignore[misc]
