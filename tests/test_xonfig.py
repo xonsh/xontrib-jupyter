@@ -39,9 +39,8 @@ def fake_lib(monkeypatch):
     modules_to_delete = []
 
     for m, mod in sys.modules.items():
-        if m.startswith(fake_packages):
-            if mod.__file__.startswith(fake_lib_path):
-                modules_to_delete.append(m)  # can't modify collection while iterating
+        if m.startswith(fake_packages) and mod.__file__.startswith(fake_lib_path):
+            modules_to_delete.append(m)  # can't modify collection while iterating
 
     for m in modules_to_delete:
         del sys.modules[m]
