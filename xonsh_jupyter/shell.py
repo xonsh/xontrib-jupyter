@@ -3,12 +3,7 @@
 import io
 import sys
 
-try:
-    # xonsh 0.18.0+
-    from xonsh.shells.base_shell import BaseShell
-except ImportError:
-    from xonsh.base_shell import BaseShell
-
+from xonsh.shells.base_shell import BaseShell
 from xonsh.built_ins import XSH
 
 
