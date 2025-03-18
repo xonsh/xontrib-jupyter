@@ -129,8 +129,9 @@ dmypy.json
 .pyre/
 .idea/
 
-# no need for libraries to keep poetry.lock
+# no need for libraries to keep lock files
 poetry.lock
+uv.lock
 
 # test files
 *.ipynb
