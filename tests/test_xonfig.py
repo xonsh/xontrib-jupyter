@@ -33,14 +33,14 @@ def fake_lib(monkeypatch):
     monkeypatch.syspath_prepend(fake_lib_path)
     yield
 
-    # monkeypatch will have restored sys.path, but it's up to us to purge the imported modules
+    # monkeypatch will have restored sys.path,
+    # but it's up to us to purge the imported modules
     fake_packages = tuple(f.name for f in os.scandir(fake_lib_path) if os.path.isdir(f))
     modules_to_delete = []
 
     for m, mod in sys.modules.items():
-        if m.startswith(fake_packages):
-            if mod.__file__.startswith(fake_lib_path):
-                modules_to_delete.append(m)  # can't modify collection while iterating
+        if m.startswith(fake_packages) and mod.__file__.startswith(fake_lib_path):
+            modules_to_delete.append(m)  # can't modify collection while iterating
 
     for m in modules_to_delete:
         del sys.modules[m]
@@ -87,7 +87,8 @@ def test_xonfig_kernel_with_jupyter(monkeypatch, capsys, fake_lib, xession):
         nonlocal cap_spec
         cap_args = dict(args=args, kw=kwargs)
         spec_file = os.path.join(args[1], "kernel.json")
-        cap_spec = json.load(open(spec_file))
+        with open(spec_file) as f:
+            cap_spec = json.load(f)
 
     def mock_get_kernel_spec(*args, **kwargs):
         raise jupyter_client.kernelspec.NoSuchKernel("xonsh")
