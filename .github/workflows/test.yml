@@ -6,6 +6,6 @@ on:
 
 jobs:
   testing:
-    uses: xonsh/actions/.github/workflows/test-poetry-xontrib.yml@main
+    uses: xonsh/actions/.github/workflows/test-pip-xontrib.yml@main
     with:
       xontrib_name: jupyter
