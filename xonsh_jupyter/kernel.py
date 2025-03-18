@@ -196,7 +196,7 @@ class XonshKernel:
     def dprint(self, level, *args, **kwargs):
         """Print but with debug information."""
         if level <= self.debug_level:
-            print("DEBUG" + str(level) + ":", file=sys.__stdout__, *args, **kwargs)
+            print("DEBUG" + str(level) + ":", *args, file=sys.__stdout__, **kwargs)
             sys.__stdout__.flush()
 
     def sign(self, messages):
