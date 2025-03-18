@@ -87,7 +87,8 @@ def test_xonfig_kernel_with_jupyter(monkeypatch, capsys, fake_lib, xession):
         nonlocal cap_spec
         cap_args = dict(args=args, kw=kwargs)
         spec_file = os.path.join(args[1], "kernel.json")
-        cap_spec = json.load(open(spec_file))
+        with open(spec_file) as f:
+            cap_spec = json.load(f)
 
     def mock_get_kernel_spec(*args, **kwargs):
         raise jupyter_client.kernelspec.NoSuchKernel("xonsh")
