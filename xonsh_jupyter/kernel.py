@@ -11,6 +11,7 @@ import uuid
 from argparse import ArgumentParser
 from collections.abc import Set
 from pprint import pformat
+from typing import ClassVar
 
 import zmq
 from xonsh import __version__ as version
@@ -54,7 +55,7 @@ class XonshKernel:
     language = "xonsh"
     language_version = version.split(".")[:3]
     banner = "Xonsh - Python-powered, cross-platform shell"
-    language_info = {
+    language_info: ClassVar = {
         "name": "xonsh",
         "version": version,
         "pygments_lexer": "xonsh",
@@ -62,7 +63,7 @@ class XonshKernel:
         "mimetype": "text/x-sh",
         "file_extension": ".xsh",
     }
-    signature_schemes = {"hmac-sha256": hashlib.sha256}
+    signature_schemes: ClassVar = {"hmac-sha256": hashlib.sha256}
 
     def __init__(self, debug_level=0, session_id=None, config=None, **kwargs):
         """
