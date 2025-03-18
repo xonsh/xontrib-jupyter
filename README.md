@@ -94,15 +94,8 @@ jupyter notebook
 
 ## Releasing your package
 
-1. Bump the version of the package `poetry version patch` (or minor/major)
-2. Push the changes to the repo and publish with
-
-    ```bash
-    poe release
-    ```
-
-3. The release notes are automatically generated as a draft release after each PR.
-4. Create a GitHub release from the draft release against the newly pushed tag
+1. The release notes are automatically generated as a draft release after each PR.
+2. Create a GitHub release from the draft release against a desired version number as the tag (e.g. v0.3.3). 
 
 ## Known issues
 
