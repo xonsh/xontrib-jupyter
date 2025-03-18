@@ -94,8 +94,8 @@ jupyter notebook
 
 ## Releasing your package
 
-1. The release notes are automatically generated as a draft release after each PR.
-2. Create a GitHub release from the draft release against a desired version number as the tag (e.g. v0.3.3). 
+1. Create a GitHub release from the web ui with the desired version number as the tag (e.g. v0.3.3). 
+2. It will automatically build the package and upload it to the PyPI.
 
 ## Known issues
 
