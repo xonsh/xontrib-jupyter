@@ -94,7 +94,7 @@ jupyter notebook
 
 ## Releasing your package
 
-1. Create a [GitHub release](https://github.com/xonsh/xontrib-jupyter/releases/new) with the desired version number as the tag (e.g. v0.3.3). 
+1. Create a [GitHub release](https://github.com/xonsh/xontrib-jupyter/releases/new) with the desired version number as the tag (e.g. v0.3.3).
 2. It will automatically build the package and upload it to the PyPI.
 
 ## Known issues
