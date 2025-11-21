@@ -35,7 +35,7 @@ def dump_bytes(*args, **kwargs):
 
 def load_bytes(b):
     """Converts bytes of JSON to an object."""
-    return json.loads(b.decode("ascii"))
+    return json.loads(b.decode("utf-8"))
 
 
 def bind(socket, connection, port):
