@@ -493,7 +493,10 @@ class XonshKernel:
 def main():
     setup(
         shell_type=JupyterShell,
-        env={"PAGER": "cat"},
+        env={
+            "PAGER": "cat",
+            "XONSH_CAPTURE_ALWAYS": True,
+        },
         aliases={"less": "cat"},
         xontribs=["coreutils"],
         threadable_predictors={"git": predict_true, "man": predict_true},
