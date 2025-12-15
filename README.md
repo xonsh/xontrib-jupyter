@@ -45,8 +45,6 @@ xonfig info
 
 ```
 
-## Usage
-
 ### Jupyter
 
 Just run [Jupyter Notebook or JupyterLab](https://jupyter.org/) and choose xonsh:
@@ -65,6 +63,19 @@ jupyter lab
 euporie-notebook --kernel-name xonsh  # or change the kernel in UI
 # or
 euporie-console --kernel-name xonsh  # or change the kernel in UI
+```
+
+## Usage
+
+By default Jupyter is not capturing the output and you can have empty result when you're running a command e.g.  `whoami`. Read about and use [`$XONSH_CAPTURE_ALWAYS`](https://xon.sh/envvars.html#xonsh-capture-always) to manage capturing on xonsh side. 
+
+```xsh
+whoami
+# <empty>
+
+$XONSH_CAPTURE_ALWAYS = True
+whoami
+# snail
 ```
 
 ## Testing
