@@ -123,6 +123,12 @@ $XONSH_SUBPROC_CAPTURED_PRINT_STDERR = True
 
 Some tools like [AWS CLI](https://aws.amazon.com/cli/) using the uncapturable `less` pager to show the output by default. In these cases you need to find the way to disable the pager e.g. set [`$AWS_PAGER = 'cat'`](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager) for AWS CLI.
 
+## Known issues
+
+### Uncaptured stdout
+
+This kernel uses xonsh with [`$XONSH_CAPTURE_ALWAYS = True`](https://xon.sh/envvars.html#xonsh-capture-always) and some commands that have waiting for user input could be uncaptured.
+
 ## Credits
 
 * This package was created with [xontrib cookiecutter template](https://github.com/xonsh/xontrib-cookiecutter).
