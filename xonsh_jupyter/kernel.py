@@ -9,9 +9,11 @@ implements the xonsh-specific bits: ``do_execute``, ``do_complete``,
 
 from __future__ import annotations
 
+import contextlib
 import inspect as _inspect
+import sys
 import traceback as _tb
-from typing import Any, ClassVar
+from typing import Any
 
 from ipykernel.kernelbase import Kernel
 from xonsh import __version__ as xonsh_version
@@ -34,16 +36,22 @@ class XonshKernel(Kernel):
     implementation_version = xonsh_version
     banner = "Xonsh — Python-powered, cross-platform shell"
 
-    language_info: ClassVar = {
+    # Both fields override traitlets defined on Kernel via traitlets, so they
+    # are intentionally instance-shaped rather than ClassVar.
+    language_info = {  # noqa: RUF012
         "name": "xonsh",
         "version": _short_version(xonsh_version),
         "mimetype": "text/x-sh",
         "file_extension": ".xsh",
-        "pygments_lexer": "xonsh",
+        # ``xonsh`` Pygments lexer assumes the xonsh runtime is loaded in
+        # the current process (it dereferences ``XSH.aliases`` while
+        # tokenizing) and crashes in clients like ``jupyter console``.
+        # ``bash`` is universally available and gives sensible highlighting.
+        "pygments_lexer": "bash",
         "codemirror_mode": {"name": "shell"},
     }
 
-    help_links: ClassVar = [
+    help_links = [  # noqa: RUF012
         {"text": "Xonsh tutorial", "url": "https://xon.sh/tutorial.html"},
         {"text": "Xonsh xontribs", "url": "https://xon.sh/xontribs.html"},
     ]
@@ -57,9 +65,20 @@ class XonshKernel(Kernel):
         """Bootstrap the xonsh session inside the kernel process."""
         if XSH.builtins is not None:
             return
+        # Subprocess output is captured by ipykernel's ``OutStream(watchfd=True)``
+        # which dups FD 1/2 onto a pipe and publishes bytes to iopub — this
+        # gives live streaming for long-running commands like ``tail -f``.
+        # Empty PROMPT/RIGHT_PROMPT/BOTTOM_TOOLBAR/TITLE prevent xonsh from
+        # printing prompt strings into cell output.
         xonsh_setup(
             shell_type=JupyterShell,
-            env={"PAGER": "cat"},
+            env={
+                "PAGER": "cat",
+                "PROMPT": "",
+                "RIGHT_PROMPT": "",
+                "BOTTOM_TOOLBAR": "",
+                "TITLE": "",
+            },
             aliases={"less": "cat"},
             xontribs=["coreutils"],
             threadable_predictors={"git": predict_true, "man": predict_true},
@@ -90,11 +109,28 @@ class XonshKernel(Kernel):
                 "user_expressions": {},
             }
 
+        # ipykernel 7.x stores the active parent_header in a ContextVar on
+        # ``OutStream`` plus a global fallback, but ``Kernel.set_parent``
+        # only propagates the ContextVar — it never updates the global.
+        # xonsh wraps execution in a ``Tee`` and writes through chained
+        # streams, which often loses the ContextVar binding, so stream
+        # messages get published with ``parent_header={}`` and JupyterLab
+        # cannot associate them with a cell.  Force the global fallback
+        # before running user code.  Same applies to ``ZMQDisplayHook``,
+        # which publishes ``execute_result`` for top-level expressions
+        # (``2+2`` on its own line) and would otherwise be invisible.
+        parent = self.get_parent()
+        if parent:
+            for target in (sys.stdout, sys.stderr, sys.displayhook):
+                if hasattr(target, "set_parent"):
+                    target.set_parent(parent)
+
         shell = XSH.shell
         history = XSH.history
         try:
             shell.default(code)
         except KeyboardInterrupt:
+            self._kill_orphaned_children()
             return {
                 "status": "error",
                 "execution_count": self.execution_count,
@@ -102,7 +138,10 @@ class XonshKernel(Kernel):
                 "evalue": "interrupted",
                 "traceback": [],
             }
-        except BaseException as exc:  # noqa: BLE001 — never let user code crash the kernel
+        except BaseException as exc:
+            # Never let user code crash the kernel — surface every exception,
+            # including SystemExit, as an error reply.
+            self._kill_orphaned_children()
             return self._publish_exception(exc, silent=silent)
 
         rtn = 0
@@ -126,6 +165,35 @@ class XonshKernel(Kernel):
             "payload": [],
             "user_expressions": {},
         }
+
+    def _kill_orphaned_children(self) -> None:
+        """Terminate any child processes that survived an interrupt.
+
+        xonsh installs its own SIGINT handler (which kills the foreground
+        subprocess group) only for commands routed through ``PopenThread``
+        — i.e. captured/threadable commands.  Uncaptured runs of
+        unthreadable binaries — e.g. ``tail -f`` started without
+        ``$XONSH_CAPTURE_ALWAYS`` — go through ``subprocess.Popen``
+        directly, so SIGINT raises ``KeyboardInterrupt`` in this thread
+        without touching the child.  The cell would then look "done" while
+        the subprocess kept running orphaned in the kernel.  Reap them
+        explicitly here so an interrupt always means "everything stops".
+        """
+        try:
+            import psutil
+        except ImportError:
+            return
+        try:
+            children = psutil.Process().children(recursive=True)
+        except psutil.Error:
+            return
+        for child in children:
+            with contextlib.suppress(psutil.Error):
+                child.terminate()
+        _, alive = psutil.wait_procs(children, timeout=0.5)
+        for child in alive:
+            with contextlib.suppress(psutil.Error):
+                child.kill()
 
     def _publish_exception(self, exc: BaseException, silent: bool = False) -> dict:
         tb_lines = _tb.format_exception(type(exc), exc, exc.__traceback__)
@@ -206,7 +274,7 @@ class XonshKernel(Kernel):
             if any(m in msg for m in incomplete_markers):
                 return {"status": "incomplete", "indent": ""}
             return {"status": "invalid"}
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {"status": "unknown", "indent": ""}
         return {"status": "complete", "indent": ""}
 
@@ -233,10 +301,8 @@ class XonshKernel(Kernel):
     # ---------------------------------------------------------------- shutdown
 
     def do_shutdown(self, restart: bool) -> dict:
-        try:
+        with contextlib.suppress(Exception):
             XSH.unload()
-        except Exception:  # noqa: BLE001
-            pass
         return {"status": "ok", "restart": restart}
 
 

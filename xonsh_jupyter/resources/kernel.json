@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "{python}",
+    "-m",
+    "xonsh_jupyter.kernel",
+    "-f",
+    "{connection_file}"
+  ],
+  "display_name": "Xonsh",
+  "language": "xonsh",
+  "interrupt_mode": "signal",
+  "metadata": {
+    "debugger": false
+  }
+}
