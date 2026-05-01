@@ -34,14 +34,14 @@ class XonshKernel(Kernel):
 
     implementation = "xonsh"
     implementation_version = xonsh_version
-    banner = "Xonsh — Python-powered, cross-platform shell"
+    banner = "Xonsh is a full-featured and cross-platform Python-powered shell."
 
     # Both fields override traitlets defined on Kernel via traitlets, so they
     # are intentionally instance-shaped rather than ClassVar.
     language_info = {  # noqa: RUF012
         "name": "xonsh",
         "version": _short_version(xonsh_version),
-        "mimetype": "text/x-sh",
+        "mimetype": "text/x-xonsh",
         "file_extension": ".xsh",
         # ``xonsh`` Pygments lexer assumes the xonsh runtime is loaded in
         # the current process (it dereferences ``XSH.aliases`` while
