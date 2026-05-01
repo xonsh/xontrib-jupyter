@@ -102,7 +102,7 @@ class XonshKernel(Kernel):
                 "evalue": "interrupted",
                 "traceback": [],
             }
-        except BaseException as exc:  # noqa: BLE001 — never let user code crash the kernel
+        except BaseException as exc:
             return self._publish_exception(exc, silent=silent)
 
         rtn = 0
@@ -206,7 +206,7 @@ class XonshKernel(Kernel):
             if any(m in msg for m in incomplete_markers):
                 return {"status": "incomplete", "indent": ""}
             return {"status": "invalid"}
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {"status": "unknown", "indent": ""}
         return {"status": "complete", "indent": ""}
 
@@ -235,7 +235,7 @@ class XonshKernel(Kernel):
     def do_shutdown(self, restart: bool) -> dict:
         try:
             XSH.unload()
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return {"status": "ok", "restart": restart}
 
