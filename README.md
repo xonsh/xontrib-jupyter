@@ -57,7 +57,8 @@ jupyter lab
 
 ### Euporie
 
-[Euporie](https://github.com/joouha/euporie) is a terminal based interactive computing environment.
+[Euporie](https://github.com/joouha/euporie) is a terminal based interactive
+computing environment.
 
 ```xsh
 euporie-notebook --kernel-name xonsh  # or change the kernel in UI
@@ -67,61 +68,53 @@ euporie-console --kernel-name xonsh  # or change the kernel in UI
 
 ## Usage
 
-By default Jupyter is not capturing the output and you can have empty result when you're running a command e.g.  `whoami`. Read about and use [`$XONSH_CAPTURE_ALWAYS`](https://xon.sh/envvars.html#xonsh-capture-always) to manage capturing on xonsh side.
+Subprocess output (e.g. `whoami`, `ls`, `git status`) is captured automatically
+and streamed to the notebook cell. Multiline xonsh blocks (`with`, `for`, …)
+are detected via `is_complete_request`. The Interrupt button on the kernel
+toolbar sends `SIGINT` and aborts the current command.
 
-```xsh
-whoami
-# <empty>
-
-$XONSH_CAPTURE_ALWAYS = True
-whoami
-# snail
-```
-
-## Testing
-
-- install the project with its dependencies
-```bash
-poetry install
-poetry install --only-root
-```
-- now start the xonsh shell
-
-```sh
-xonsh --no-rc
-```
-
-- inside the xonsh shell, you can load the jupyter xontrib and install the kernel
-
-```sh
-xontrib load jupyter
-
-# this will install the kernel
-xonfig jupyter-kernel --user
-
-# now start a notebook and choose xonsh kernel
-jupyter notebook
-```
-
-## Releasing your package
-
-1. Create a [GitHub release](https://github.com/xonsh/xontrib-jupyter/releases/new) with the desired version number as the tag (e.g. v0.3.3).
-2. It will automatically build the package and upload it to the PyPI.
-
-## Known issues
-
-### Uncaptured output
-
-In some cases you need to enable capturing first:
+If you ever need to force xonsh-side capturing (e.g. for tools that write
+to a TTY directly), the historical workaround is still available:
 
 ```xsh
 $XONSH_CAPTURE_ALWAYS = True
 $XONSH_SUBPROC_CAPTURED_PRINT_STDERR = True
 ```
 
-### Uncaptured output because of pager
+## Testing
 
-Some tools like [AWS CLI](https://aws.amazon.com/cli/) using the uncapturable `less` pager to show the output by default. In these cases you need to find the way to disable the pager e.g. set [`$AWS_PAGER = 'cat'`](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager) for AWS CLI.
+Install the project and its development dependencies in editable mode:
+
+```bash
+pip install -e '.[dev]'
+```
+
+Then start `xonsh` without an rc file, load the xontrib and install the
+kernelspec into the current user's profile:
+
+```sh
+xonsh --no-rc -c "xontrib load jupyter; xonfig jupyter-kernel --user"
+```
+
+Now run a notebook and pick the xonsh kernel:
+
+```sh
+jupyter notebook
+```
+
+Run the unit tests with `pytest`:
+
+```sh
+pytest -v
+```
+
+## Known issues
+
+### Pager-based tools
+
+Some tools like the [AWS CLI](https://aws.amazon.com/cli/) shell out to a
+non-capturable `less` pager by default. Disable pagination at the tool
+level (e.g. `$AWS_PAGER = 'cat'` for AWS CLI).
 
 ## Credits
 

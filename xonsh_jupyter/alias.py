@@ -19,12 +19,12 @@ def jupyter_kernel(
     """
     import json
     import os
-    import pathlib
     import shutil
     import sys
     import tempfile
+    from pathlib import Path
 
-    from .resources import LOGO_PATH
+    from .resources import RESOURCES_DIR
 
     try:
         from jupyter_client.kernelspec import KernelSpecManager, NoSuchKernel
@@ -34,45 +34,44 @@ def jupyter_kernel(
     ksm = KernelSpecManager()
 
     prefix = prefix or sys.prefix
-    spec = {
-        "argv": [
-            sys.executable,
-            "-m",
-            "xonsh_jupyter.kernel",
-            "-f",
-            "{connection_file}",
-        ],
-        "display_name": "Xonsh",
-        "language": "xonsh",
-        "codemirror_mode": "shell",
-    }
-
     if root and prefix:
-        # os.path.join isn't used since prefix is probably absolute
+        # `os.path.join` would discard `root` because `prefix` is absolute, so
+        # the original chrooted-install behaviour is preserved by concatenation.
         prefix = root + prefix
 
     try:
         old_jup_kernel = ksm.get_kernel_spec(XONSH_JUPYTER_KERNEL)
         if not old_jup_kernel.resource_dir.startswith(prefix):
             print(
-                "Removing existing Jupyter kernel found"
-                + f"at {old_jup_kernel.resource_dir}"
+                "Removing existing Jupyter kernel found "
+                f"at {old_jup_kernel.resource_dir}"
             )
         ksm.remove_kernel_spec(XONSH_JUPYTER_KERNEL)
     except NoSuchKernel:
         pass
 
-    if sys.platform == "win32":
-        # Ensure that conda-build detects the hard coded prefix
-        spec["argv"][0] = spec["argv"][0].replace(os.sep, os.altsep)
-        prefix = prefix.replace(os.sep, os.altsep)
+    spec = json.loads((RESOURCES_DIR / "kernel.json").read_text(encoding="utf-8"))
+    python = sys.executable
+    if sys.platform == "win32" and os.altsep:
+        # conda-build / Jupyter on Windows expect forward-slash paths.
+        python = python.replace(os.sep, os.altsep)
+        if isinstance(prefix, str):
+            prefix = prefix.replace(os.sep, os.altsep)
+    spec["argv"] = [python if a == "{python}" else a for a in spec["argv"]]
 
     with tempfile.TemporaryDirectory() as d:
-        os.chmod(d, 0o755)  # Starts off as 700, not user readable
-        with open(os.path.join(d, "kernel.json"), "w") as f:
-            json.dump(spec, f, sort_keys=True)
+        os.chmod(d, 0o755)  # tempdir starts at 0o700, Jupyter needs world-readable.
+        d_path = Path(d)
+        with (d_path / "kernel.json").open("w", encoding="utf-8") as f:
+            json.dump(spec, f, sort_keys=True, indent=2)
 
-        shutil.copyfile(LOGO_PATH, pathlib.Path(d) / LOGO_PATH.name)
+        for resource in RESOURCES_DIR.iterdir():
+            if not resource.is_file():
+                continue
+            name = resource.name
+            if name == "kernel.json" or name.startswith("__") or name.endswith(".py"):
+                continue
+            shutil.copyfile(resource, d_path / name)
 
         print("Installing Jupyter kernel spec:")
         print(f"  root: {root!r}")

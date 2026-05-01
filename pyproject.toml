@@ -3,7 +3,7 @@ name = "xontrib-jupyter"
 dynamic = ["version"]
 description = "Xonsh kernel for Jupyter Notebook and Jupyter Lab allows to execute xonsh shell commands in a notebook cell"
 authors = [{ name = "Xonsh Dev", email = "jnoortheen@gmail.com" }]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "MIT"
 keywords = [
@@ -20,24 +20,29 @@ classifiers = [
     "Topic :: Terminals",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: Jupyter",
 ]
 dependencies = [
     "xonsh>=0.19",
+    "ipykernel>=6.29",
     "jupyter-client>=8",
 ]
 
 [project.urls]
 Repository = "https://github.com/xonsh/xontrib-jupyter"
-Documentation = "https://github.com/xonsh/xontrib-jupyter/blob/master/README.md"
+Documentation = "https://github.com/xonsh/xontrib-jupyter/blob/main/README.md"
 Code = "https://github.com/xonsh/xontrib-jupyter"
 "Issue tracker" = "https://github.com/xonsh/xontrib-jupyter/issues"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=6.0",
+    "mypy>=1.0",
+    "jupyter_kernel_test>=0.7",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -59,7 +64,7 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
-[tool.ruff]
+[tool.ruff.lint]
 select = [
     "E",
     "F",
@@ -67,6 +72,6 @@ select = [
     "I",   # isort
     "UP",  # pyupgrade
     "SIM", # simplify
-    "TC", # flake8-type-checking
+    "TC",  # flake8-type-checking
     "RUF", # ruff specific rules
 ]

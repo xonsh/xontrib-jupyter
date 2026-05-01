@@ -131,13 +131,27 @@ EXPANSION_CASES = (
 )
 
 
+def _stub_ipykernel(monkeypatch):
+    """Provide a class-shaped stub for ``ipykernel.kernelbase.Kernel``.
+
+    ``MagicMock`` instances cannot be used as base classes; we need a real
+    Python ``type`` so that ``class XonshKernel(Kernel)`` succeeds at import
+    time without pulling in the full ipykernel/zmq stack.
+    """
+    fake_kernel_cls = type("FakeIPyKernel", (), {})
+    kernelbase = MagicMock(Kernel=fake_kernel_cls)
+    kernelapp = MagicMock()
+    pkg = MagicMock(kernelbase=kernelbase, kernelapp=kernelapp)
+    monkeypatch.setitem(sys.modules, "ipykernel", pkg)
+    monkeypatch.setitem(sys.modules, "ipykernel.kernelbase", kernelbase)
+    monkeypatch.setitem(sys.modules, "ipykernel.kernelapp", kernelapp)
+
+
 @pytest.fixture(autouse=True)
 def setup(monkeypatch):
     global XonshKernel
     if XonshKernel is None:
-        monkeypatch.setitem(sys.modules, "zmq", MagicMock())
-        monkeypatch.setitem(sys.modules, "zmq.eventloop", MagicMock())
-        monkeypatch.setitem(sys.modules, "zmq.error", MagicMock())
+        _stub_ipykernel(monkeypatch)
         from xonsh_jupyter import kernel
 
         XonshKernel = kernel.XonshKernel
@@ -169,3 +183,15 @@ def test_completion_alias_expansion(
         signature(Completer.complete).bind(None, *args, **kwargs).arguments
         == expected_args
     )
+
+
+def test_do_is_complete_handles_complete_input(xession):
+    kernel = MagicMock()
+    result = XonshKernel.do_is_complete(kernel, "echo hello")
+    assert result["status"] in {"complete", "unknown"}
+
+
+def test_do_is_complete_empty_string(xession):
+    kernel = MagicMock()
+    result = XonshKernel.do_is_complete(kernel, "")
+    assert result == {"status": "complete", "indent": ""}
