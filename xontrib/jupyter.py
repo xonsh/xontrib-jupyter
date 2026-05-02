@@ -1,3 +1,4 @@
+"""Xonsh Jupyter kernel allows to run Xonsh shell code in Jupyter, JupyterLab, Euporia, etc."""
 from xonsh.built_ins import XSH
 from xonsh.xonfig import xonfig_main
 
