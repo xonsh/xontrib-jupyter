@@ -41,8 +41,16 @@ Code = "https://github.com/xonsh/xontrib-jupyter"
 [project.optional-dependencies]
 dev = [
     "pytest>=6.0",
+    "pytest-timeout>=2.1",
     "mypy>=1.0",
     "jupyter_kernel_test>=0.7",
+    # Integration tests under tests/test_display.py and tests/test_widgets.py
+    # exercise the rich-display path; pandas and ipywidgets are imported with
+    # pytest.importorskip so the suite still passes if they're absent, but CI
+    # installs them to actually run those assertions.
+    "ipywidgets>=8.0",
+    "pandas>=2.0",
+    "psutil>=5.9",
 ]
 
 [tool.hatch.build.targets.sdist]

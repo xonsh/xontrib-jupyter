@@ -134,16 +134,22 @@ EXPANSION_CASES = (
 def _stub_ipykernel(monkeypatch):
     """Provide a class-shaped stub for ``ipykernel.kernelbase.Kernel``.
 
-    ``MagicMock`` instances cannot be used as base classes; we need a real
-    Python ``type`` so that ``class XonshKernel(Kernel)`` succeeds at import
-    time without pulling in the full ipykernel/zmq stack.
+    ``MagicMock`` instances cannot be used as base classes; we need real
+    Python ``type`` s so that ``class XonshKernel(IPythonKernel)``
+    succeeds at import time without pulling in the full ipykernel /
+    IPython / zmq stack.
     """
-    fake_kernel_cls = type("FakeIPyKernel", (), {})
-    kernelbase = MagicMock(Kernel=fake_kernel_cls)
+    fake_base_cls = type("FakeKernelBase", (), {})
+    fake_ipy_kernel_cls = type("FakeIPyKernel", (fake_base_cls,), {})
+    kernelbase = MagicMock(Kernel=fake_base_cls)
+    ipkernel = MagicMock(IPythonKernel=fake_ipy_kernel_cls)
     kernelapp = MagicMock()
-    pkg = MagicMock(kernelbase=kernelbase, kernelapp=kernelapp)
+    pkg = MagicMock(
+        kernelbase=kernelbase, ipkernel=ipkernel, kernelapp=kernelapp
+    )
     monkeypatch.setitem(sys.modules, "ipykernel", pkg)
     monkeypatch.setitem(sys.modules, "ipykernel.kernelbase", kernelbase)
+    monkeypatch.setitem(sys.modules, "ipykernel.ipkernel", ipkernel)
     monkeypatch.setitem(sys.modules, "ipykernel.kernelapp", kernelapp)
 
 
