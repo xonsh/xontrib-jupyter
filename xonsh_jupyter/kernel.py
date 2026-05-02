@@ -1,10 +1,17 @@
-"""Xonsh Jupyter kernel built on top of ``ipykernel.kernelbase.Kernel``.
+"""Xonsh Jupyter kernel built on top of ``ipykernel.ipkernel.IPythonKernel``.
 
-The kernel inherits the wire transport, HMAC signing, heartbeat, busy/idle
-bracketing, parent-header propagation, ``interrupt_request`` handling, and
-``OutStream``-based subprocess capture from ipykernel. This module only
-implements the xonsh-specific bits: ``do_execute``, ``do_complete``,
-``do_is_complete``, ``do_inspect`` and ``do_shutdown``.
+Inheriting from ``IPythonKernel`` (rather than the bare ``Kernel`` base)
+gives us a fully-wired ``ZMQInteractiveShell`` for free: rich
+``execute_result`` / ``display_data`` MIME bundles via IPython's
+``DisplayFormatter``, working ``IPython.display.display(...)``, ipywidgets
+through the global comm-manager, the ``pre_execute`` / ``post_execute``
+event bus that ``matplotlib_inline`` hooks into, and per-cell parent-header
+propagation through the shell's stdout/stderr/displayhook/display_pub.
+
+This module only implements the xonsh-specific bits: bootstrap the xonsh
+session inside the kernel process, route ``do_execute`` through xonsh's
+execer instead of IPython's ``run_cell``, and provide xonsh-aware
+``do_complete`` / ``do_is_complete`` / ``do_inspect`` / ``do_shutdown``.
 """
 
 from __future__ import annotations
@@ -15,7 +22,7 @@ import sys
 import traceback as _tb
 from typing import Any
 
-from ipykernel.kernelbase import Kernel
+from ipykernel.ipkernel import IPythonKernel
 from xonsh import __version__ as xonsh_version
 from xonsh.built_ins import XSH
 from xonsh.commands_cache import predict_true
@@ -29,7 +36,7 @@ def _short_version(v: str) -> str:
     return ".".join(v.split(".")[:3])
 
 
-class XonshKernel(Kernel):
+class XonshKernel(IPythonKernel):
     """Jupyter kernel for the xonsh shell."""
 
     implementation = "xonsh"
@@ -47,6 +54,8 @@ class XonshKernel(Kernel):
         # the current process (it dereferences ``XSH.aliases`` while
         # tokenizing) and crashes in clients like ``jupyter console``.
         # ``bash`` is universally available and gives sensible highlighting.
+        # TODO: switch to ``"xonsh"`` once xonsh >= 0.23.4 is on PyPI
+        # (https://github.com/xonsh/xonsh/pull/6384 fixed the crash).
         "pygments_lexer": "bash",
         "codemirror_mode": {"name": "shell"},
     }
@@ -60,6 +69,22 @@ class XonshKernel(Kernel):
         super().__init__(**kwargs)
         self._init_xonsh_session()
         self.completer = Completer()
+        # Route ``sys.displayhook`` to the shell's ZMQShellDisplayHook so
+        # top-level expressions (``2+2`` on its own line) go through
+        # IPython's ``DisplayFormatter`` and get rich MIME bundles
+        # (``text/html`` for DataFrames, ``image/png`` for matplotlib
+        # figures, ``text/markdown`` for ``IPython.display.Markdown``,
+        # etc.) instead of bare ``text/plain: repr(value)``.  IPython's
+        # ``run_cell`` does this swap per cell; since we bypass
+        # ``run_cell``, we set it once at startup.
+        sys.displayhook = self.shell.displayhook
+        # Inject ``get_ipython`` into the xonsh namespace so cells can use
+        # the standard IPython entry point (``get_ipython()``) without an
+        # extra ``from IPython import get_ipython`` import.  IPython's
+        # InteractiveShell normally puts this in the user_ns; xonsh has
+        # its own namespace, so we mirror it explicitly.
+        if XSH.shell is not None and XSH.shell.ctx is not None:
+            XSH.shell.ctx["get_ipython"] = lambda: self.shell
 
     def _init_xonsh_session(self) -> None:
         """Bootstrap the xonsh session inside the kernel process."""
@@ -90,7 +115,7 @@ class XonshKernel(Kernel):
 
     # ------------------------------------------------------------------ execute
 
-    def do_execute(
+    async def do_execute(  # type: ignore[override]
         self,
         code: str,
         silent: bool,
@@ -109,62 +134,82 @@ class XonshKernel(Kernel):
                 "user_expressions": {},
             }
 
-        # ipykernel 7.x stores the active parent_header in a ContextVar on
-        # ``OutStream`` plus a global fallback, but ``Kernel.set_parent``
-        # only propagates the ContextVar — it never updates the global.
-        # xonsh wraps execution in a ``Tee`` and writes through chained
-        # streams, which often loses the ContextVar binding, so stream
-        # messages get published with ``parent_header={}`` and JupyterLab
-        # cannot associate them with a cell.  Force the global fallback
-        # before running user code.  Same applies to ``ZMQDisplayHook``,
-        # which publishes ``execute_result`` for top-level expressions
-        # (``2+2`` on its own line) and would otherwise be invisible.
-        parent = self.get_parent()
-        if parent:
-            for target in (sys.stdout, sys.stderr, sys.displayhook):
-                if hasattr(target, "set_parent"):
-                    target.set_parent(parent)
+        # IPythonKernel.set_parent → ZMQInteractiveShell.set_parent already
+        # propagates the parent header to displayhook, display_pub, stdout
+        # and stderr.  Fire ``pre_execute`` so any registered hook (e.g.
+        # ``matplotlib_inline.configure_inline_support``) can prepare for
+        # the new cell.
+        from IPython.core.interactiveshell import ExecutionInfo, ExecutionResult
+
+        info = ExecutionInfo(
+            raw_cell=code,
+            store_history=store_history,
+            silent=silent,
+            shell_futures=False,
+            cell_id=cell_id,
+            transformed_cell=code,
+        )
+        result = ExecutionResult(info)
+        result.execution_count = self.execution_count
+
+        self.shell.events.trigger("pre_execute")
+        if not silent:
+            self.shell.events.trigger("pre_run_cell", info)
 
         shell = XSH.shell
         history = XSH.history
         try:
-            shell.default(code)
-        except KeyboardInterrupt:
-            self._kill_orphaned_children()
+            try:
+                shell.default(code)
+            except KeyboardInterrupt as exc:
+                result.error_in_exec = exc
+                self._kill_orphaned_children()
+                return {
+                    "status": "error",
+                    "execution_count": self.execution_count,
+                    "ename": "KeyboardInterrupt",
+                    "evalue": "interrupted",
+                    "traceback": [],
+                }
+            except BaseException as exc:
+                # Never let user code crash the kernel — surface every
+                # exception, including SystemExit, as an error reply.
+                result.error_in_exec = exc
+                self._kill_orphaned_children()
+                return self._publish_exception(exc, silent=silent)
+
+            rtn = 0
+            if history is not None and len(history) > 0:
+                rtn = history.rtns[-1] or 0
+            if rtn:
+                result.error_in_exec = RuntimeError(f"NonZeroExitStatus: {rtn}")
+                content = {
+                    "status": "error",
+                    "execution_count": self.execution_count,
+                    "ename": "NonZeroExitStatus",
+                    "evalue": str(rtn),
+                    "traceback": [f"Process exited with non-zero status: {rtn}"],
+                }
+                if not silent:
+                    self.send_response(self.iopub_socket, "error", content)
+                return content
+
             return {
-                "status": "error",
+                "status": "ok",
                 "execution_count": self.execution_count,
-                "ename": "KeyboardInterrupt",
-                "evalue": "interrupted",
-                "traceback": [],
+                "payload": [],
+                "user_expressions": {},
             }
-        except BaseException as exc:
-            # Never let user code crash the kernel — surface every exception,
-            # including SystemExit, as an error reply.
-            self._kill_orphaned_children()
-            return self._publish_exception(exc, silent=silent)
-
-        rtn = 0
-        if history is not None and len(history) > 0:
-            rtn = history.rtns[-1] or 0
-        if rtn:
-            content = {
-                "status": "error",
-                "execution_count": self.execution_count,
-                "ename": "NonZeroExitStatus",
-                "evalue": str(rtn),
-                "traceback": [f"Process exited with non-zero status: {rtn}"],
-            }
+        finally:
+            # ``post_execute`` is the hook ``matplotlib_inline`` uses to
+            # flush pending figures into the cell.  ``post_run_cell`` is
+            # invoked by libraries that want the cell's
+            # ``ExecutionResult`` (e.g. autoreload).  Trigger both so
+            # nothing is silently dropped because we bypassed
+            # ``shell.run_cell``.
+            self.shell.events.trigger("post_execute")
             if not silent:
-                self.send_response(self.iopub_socket, "error", content)
-            return content
-
-        return {
-            "status": "ok",
-            "execution_count": self.execution_count,
-            "payload": [],
-            "user_expressions": {},
-        }
+                self.shell.events.trigger("post_run_cell", result)
 
     def _kill_orphaned_children(self) -> None:
         """Terminate any child processes that survived an interrupt.
@@ -280,7 +325,7 @@ class XonshKernel(Kernel):
 
     # ----------------------------------------------------------------- inspect
 
-    def do_inspect(
+    def do_inspect(  # type: ignore[override]
         self,
         code: str,
         cursor_pos: int,
@@ -300,10 +345,10 @@ class XonshKernel(Kernel):
 
     # ---------------------------------------------------------------- shutdown
 
-    def do_shutdown(self, restart: bool) -> dict:
+    def do_shutdown(self, restart: bool) -> dict:  # type: ignore[override]
         with contextlib.suppress(Exception):
             XSH.unload()
-        return {"status": "ok", "restart": restart}
+        return super().do_shutdown(restart)
 
 
 # ----------------------------------------------------------------------- helpers

@@ -81,6 +81,81 @@ $XONSH_CAPTURE_ALWAYS = True
 $XONSH_SUBPROC_CAPTURED_PRINT_STDERR = True
 ```
 
+## Interactive widgets
+
+`ipywidgets`, `IPython.display`, pandas/matplotlib rich repr, and the
+`comm` channel all work — the kernel inherits `ipykernel.IPythonKernel`,
+so widget views, slider observers, and button callbacks behave as in a
+plain Python kernel. The difference: callbacks can use the full xonsh
+syntax, including subprocess pipelines and `@(...)` substitutions.
+
+Below — a slider that picks a size threshold (MB) plus a button that
+lists every file at or above that size under `/usr`, sorted largest
+first. The output area is cleared on every click so each run gives a
+fresh result.
+
+```python
+from ipywidgets import IntSlider, Button, Output, VBox
+from IPython.display import display
+
+slider = IntSlider(value=10, min=1, max=200, step=1, description="MB ≥")
+button = Button(description="Find files", button_style="success")
+out = Output()
+
+@button.on_click
+def _(_):
+    out.clear_output()
+    with out:
+        mb = slider.value
+        print(f"Files ≥ {mb} MB under /usr:")
+        find /usr -type f -size +@(mb)M -print0 2>/dev/null | xargs -0 du -h 2>/dev/null | sort -hr | head -30
+
+display(VBox([slider, button, out]))
+```
+
+Drag the slider, hit *Find files*, and the cell repopulates from a fresh
+`find … | xargs du | sort` pipeline that ran inside the click handler.
+`@(mb)` interpolates the current slider value into the subprocess
+arguments — that's pure xonsh syntax executing inside an `ipywidgets`
+callback.
+
+The next example samples total CPU usage 10 times via `ps -A -o %cpu` and
+renders the series as an inline matplotlib chart. The first import block
+configures the inline backend once per kernel session — `%matplotlib
+inline` is unavailable because xonsh's parser does not understand IPython
+magics, so the equivalent is invoked directly through the
+`matplotlib_inline` package:
+
+```python
+import time
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline as _mib
+_mib.configure_inline_support(get_ipython(), "inline")
+
+samples = []
+for i in range(10):
+    cpu = float($(ps -A -o %cpu | awk '{s+=$1} END {print s}'))
+    samples.append(cpu)
+    print(f"sample {i + 1}: {cpu:.1f}%")
+    time.sleep(0.3)
+
+def show_chart():
+    fig, ax = plt.subplots(figsize=(7, 3))
+    ax.plot(samples, marker="o", linewidth=2)
+    ax.set(xlabel="sample #", ylabel="total CPU %",
+           title="CPU usage over 10 samples")
+    ax.grid(True, alpha=0.3)
+    plt.show()
+
+show_chart()
+```
+
+`$(ps -A -o %cpu | awk '...')` runs a real shell pipeline and returns the
+captured stdout as a string — the conversion to `float` happens in
+Python. Wrapping the matplotlib calls in `show_chart()` keeps every
+intermediate `Axes`/`Line2D` object out of the cell output so only the
+final rendered figure is published as an `image/png` MIME bundle.
+
 ## Testing
 
 Install the project and its development dependencies in editable mode:
