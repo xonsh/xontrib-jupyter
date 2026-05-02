@@ -11,8 +11,6 @@ of the session.  Any pre-existing user spec is left untouched.
 from __future__ import annotations
 
 import os
-import shutil
-import sys
 import time
 from typing import Any
 
@@ -23,9 +21,7 @@ import pytest
 # environments where that bootstrap fails (e.g. minimal sdists in CI
 # without Jupyter installed).
 jupyter_client = pytest.importorskip("jupyter_client")
-KernelSpecManager = pytest.importorskip(
-    "jupyter_client.kernelspec"
-).KernelSpecManager
+KernelSpecManager = pytest.importorskip("jupyter_client.kernelspec").KernelSpecManager
 start_new_kernel = jupyter_client.manager.start_new_kernel
 
 
@@ -172,4 +168,4 @@ def find_all(
 
 
 # Re-export helpers so test files can ``from conftest import ...``.
-__all__ = ("run_cell", "find_first", "find_all", "kernel", "xonsh_kernelspec")
+__all__ = ("find_all", "find_first", "kernel", "run_cell", "xonsh_kernelspec")

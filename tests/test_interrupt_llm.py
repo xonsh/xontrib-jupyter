@@ -65,9 +65,7 @@ def tmp_target(tmp_path):
     return str(path)
 
 
-def _execute_async_then_interrupt(
-    km, kc, code: str, *, dwell: float = 1.5
-) -> str:
+def _execute_async_then_interrupt(km, kc, code: str, *, dwell: float = 1.5) -> str:
     """Submit ``code``, sleep for ``dwell`` so the subprocess starts,
     then issue the interrupt.  Returns the resulting reply status.
     """

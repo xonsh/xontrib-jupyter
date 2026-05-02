@@ -17,7 +17,6 @@ import pytest
 
 from .conftest import find_all, find_first, run_cell
 
-
 # ---------------------------------------------------------------- execute_result
 
 EXECUTE_RESULT_CASES = [
@@ -100,9 +99,7 @@ def test_display_does_not_emit_execute_result(kernel):
     _, kc = kernel
     status, iopub = run_cell(
         kc,
-        "from IPython.display import display, HTML\n"
-        "display(HTML('<x/>'))\n"
-        "None",
+        "from IPython.display import display, HTML\ndisplay(HTML('<x/>'))\nNone",
     )
     assert status == "ok"
     assert find_first(iopub, "execute_result") is None
@@ -116,9 +113,7 @@ def test_print_still_streams_to_stdout(kernel):
     status, iopub = run_cell(kc, "print('plain stdout')")
     assert status == "ok"
     streams = find_all(iopub, "stream")
-    assert any(
-        s["name"] == "stdout" and "plain stdout" in s["text"] for s in streams
-    )
+    assert any(s["name"] == "stdout" and "plain stdout" in s["text"] for s in streams)
 
 
 # ---------------------------------------------------------- xonsh integration
