@@ -135,7 +135,7 @@ def _stub_ipykernel(monkeypatch):
     """Provide a class-shaped stub for ``ipykernel.kernelbase.Kernel``.
 
     ``MagicMock`` instances cannot be used as base classes; we need real
-    Python ``type`` s so that ``class XonshKernel(IPythonKernel)``
+    Python ``type`` s so that ``class XonshKernel(IPythonKernel)``
     succeeds at import time without pulling in the full ipykernel /
     IPython / zmq stack.
     """

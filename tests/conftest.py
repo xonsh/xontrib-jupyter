@@ -10,6 +10,7 @@ of the session.  Any pre-existing user spec is left untouched.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 from typing import Any
@@ -79,12 +80,10 @@ def kernel(xonsh_kernelspec):
     try:
         yield km, kc
     finally:
-        try:
+        # Best-effort teardown — the kernel may already be dead from the
+        # test (e.g. a SIGKILL in test_interrupt).
+        with contextlib.suppress(Exception):
             km.shutdown_kernel(now=True)
-        except Exception:
-            # Best-effort teardown — the kernel may already be dead from
-            # the test (e.g. a SIGKILL in test_interrupt).
-            pass
 
 
 def run_cell(
