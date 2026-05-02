@@ -22,7 +22,7 @@ pytest.importorskip(
     reason="ipywidgets is an optional dependency; tests skipped when absent",
 )
 
-from .conftest import find_all, find_first, run_cell  # noqa: E402
+from .conftest import find_all, find_first, run_cell
 
 WIDGET_VIEW_MIME = "application/vnd.jupyter.widget-view+json"
 
@@ -57,8 +57,7 @@ def test_widget_published_with_widget_view_mime(kernel, code, msg_type):
     msg = find_first(iopub, msg_type)
     assert msg is not None, f"expected a {msg_type} message"
     assert WIDGET_VIEW_MIME in msg["data"], (
-        f"expected {WIDGET_VIEW_MIME} in {msg_type} data, "
-        f"got keys: {list(msg['data'])}"
+        f"expected {WIDGET_VIEW_MIME} in {msg_type} data, got keys: {list(msg['data'])}"
     )
     assert msg["data"][WIDGET_VIEW_MIME].get("model_id")
 
@@ -83,9 +82,7 @@ def test_value_change_triggers_comm_msg_update(kernel):
     _, kc = kernel
     status, _ = run_cell(
         kc,
-        "from ipywidgets import IntSlider\n"
-        "s = IntSlider(value=0, min=0, max=10)\n"
-        "s",
+        "from ipywidgets import IntSlider\ns = IntSlider(value=0, min=0, max=10)\ns",
     )
     assert status == "ok"
 
@@ -116,6 +113,4 @@ def test_observe_callback_runs_on_value_change(kernel):
     assert status == "ok"
     streams = find_all(iopub, "stream")
     text = "".join(s["text"] for s in streams)
-    assert "[5, 7]" in text, (
-        f"expected observer to fire twice, output was: {text!r}"
-    )
+    assert "[5, 7]" in text, f"expected observer to fire twice, output was: {text!r}"

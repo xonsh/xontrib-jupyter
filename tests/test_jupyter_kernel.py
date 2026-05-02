@@ -144,9 +144,7 @@ def _stub_ipykernel(monkeypatch):
     kernelbase = MagicMock(Kernel=fake_base_cls)
     ipkernel = MagicMock(IPythonKernel=fake_ipy_kernel_cls)
     kernelapp = MagicMock()
-    pkg = MagicMock(
-        kernelbase=kernelbase, ipkernel=ipkernel, kernelapp=kernelapp
-    )
+    pkg = MagicMock(kernelbase=kernelbase, ipkernel=ipkernel, kernelapp=kernelapp)
     monkeypatch.setitem(sys.modules, "ipykernel", pkg)
     monkeypatch.setitem(sys.modules, "ipykernel.kernelbase", kernelbase)
     monkeypatch.setitem(sys.modules, "ipykernel.ipkernel", ipkernel)
