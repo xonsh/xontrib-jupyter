@@ -27,7 +27,7 @@ classifiers = [
     "Framework :: Jupyter",
 ]
 dependencies = [
-    "xonsh>=0.19",
+    "xonsh>=0.23.4",
     "ipykernel>=6.29",
     "jupyter-client>=8",
 ]

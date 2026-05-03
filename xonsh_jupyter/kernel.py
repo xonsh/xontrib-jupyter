@@ -50,13 +50,7 @@ class XonshKernel(IPythonKernel):
         "version": _short_version(xonsh_version),
         "mimetype": "text/x-xonsh",
         "file_extension": ".xsh",
-        # ``xonsh`` Pygments lexer assumes the xonsh runtime is loaded in
-        # the current process (it dereferences ``XSH.aliases`` while
-        # tokenizing) and crashes in clients like ``jupyter console``.
-        # ``bash`` is universally available and gives sensible highlighting.
-        # TODO: switch to ``"xonsh"`` once xonsh >= 0.23.4 is on PyPI
-        # (https://github.com/xonsh/xonsh/pull/6384 fixed the crash).
-        "pygments_lexer": "bash",
+        "pygments_lexer": "xonsh",
         "codemirror_mode": {"name": "shell"},
     }
 
