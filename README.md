@@ -57,7 +57,8 @@ jupyter lab
 
 ### Euporie
 
-[Euporie](https://github.com/joouha/euporie) is a terminal based interactive computing environment.
+[Euporie](https://github.com/joouha/euporie) is a terminal based interactive
+computing environment.
 
 ```xsh
 euporie-notebook --kernel-name xonsh  # or change the kernel in UI
@@ -67,61 +68,128 @@ euporie-console --kernel-name xonsh  # or change the kernel in UI
 
 ## Usage
 
-By default Jupyter is not capturing the output and you can have empty result when you're running a command e.g.  `whoami`. Read about and use [`$XONSH_CAPTURE_ALWAYS`](https://xon.sh/envvars.html#xonsh-capture-always) to manage capturing on xonsh side.
+Subprocess output (e.g. `whoami`, `ls`, `git status`) is captured automatically
+and streamed to the notebook cell. Multiline xonsh blocks (`with`, `for`, …)
+are detected via `is_complete_request`. The Interrupt button on the kernel
+toolbar sends `SIGINT` and aborts the current command.
 
-```xsh
-whoami
-# <empty>
-
-$XONSH_CAPTURE_ALWAYS = True
-whoami
-# snail
-```
-
-## Testing
-
-- install the project with its dependencies
-```bash
-poetry install
-poetry install --only-root
-```
-- now start the xonsh shell
-
-```sh
-xonsh --no-rc
-```
-
-- inside the xonsh shell, you can load the jupyter xontrib and install the kernel
-
-```sh
-xontrib load jupyter
-
-# this will install the kernel
-xonfig jupyter-kernel --user
-
-# now start a notebook and choose xonsh kernel
-jupyter notebook
-```
-
-## Releasing your package
-
-1. Create a [GitHub release](https://github.com/xonsh/xontrib-jupyter/releases/new) with the desired version number as the tag (e.g. v0.3.3).
-2. It will automatically build the package and upload it to the PyPI.
-
-## Known issues
-
-### Uncaptured output
-
-In some cases you need to enable capturing first:
+If you ever need to force xonsh-side capturing (e.g. for tools that write
+to a TTY directly), the historical workaround is still available:
 
 ```xsh
 $XONSH_CAPTURE_ALWAYS = True
 $XONSH_SUBPROC_CAPTURED_PRINT_STDERR = True
 ```
 
-### Uncaptured output because of pager
+## Interactive widgets
 
-Some tools like [AWS CLI](https://aws.amazon.com/cli/) using the uncapturable `less` pager to show the output by default. In these cases you need to find the way to disable the pager e.g. set [`$AWS_PAGER = 'cat'`](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-pagination.html#cli-usage-pagination-awspager) for AWS CLI.
+`ipywidgets`, `IPython.display`, pandas/matplotlib rich repr, and the
+`comm` channel all work — the kernel inherits `ipykernel.IPythonKernel`,
+so widget views, slider observers, and button callbacks behave as in a
+plain Python kernel. The difference: callbacks can use the full xonsh
+syntax, including subprocess pipelines and `@(...)` substitutions.
+
+Below — a slider that picks a size threshold (MB) plus a button that
+lists every file at or above that size under `/usr`, sorted largest
+first. The output area is cleared on every click so each run gives a
+fresh result.
+
+```python
+from ipywidgets import IntSlider, Button, Output, VBox
+from IPython.display import display
+
+slider = IntSlider(value=10, min=1, max=200, step=1, description="MB ≥")
+button = Button(description="Find files", button_style="success")
+out = Output()
+
+@button.on_click
+def _(_):
+    out.clear_output()
+    with out:
+        mb = slider.value
+        print(f"Files ≥ {mb} MB under /usr:")
+        find /usr -type f -size +@(mb)M -print0 2>/dev/null | xargs -0 du -h 2>/dev/null | sort -hr | head -30
+
+display(VBox([slider, button, out]))
+```
+
+Drag the slider, hit *Find files*, and the cell repopulates from a fresh
+`find … | xargs du | sort` pipeline that ran inside the click handler.
+`@(mb)` interpolates the current slider value into the subprocess
+arguments — that's pure xonsh syntax executing inside an `ipywidgets`
+callback.
+
+The next example samples total CPU usage 10 times via `ps -A -o %cpu` and
+renders the series as an inline matplotlib chart. The first import block
+configures the inline backend once per kernel session — `%matplotlib
+inline` is unavailable because xonsh's parser does not understand IPython
+magics, so the equivalent is invoked directly through the
+`matplotlib_inline` package:
+
+```python
+import time
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline as _mib
+_mib.configure_inline_support(get_ipython(), "inline")
+
+samples = []
+for i in range(10):
+    cpu = float($(ps -A -o %cpu | awk '{s+=$1} END {print s}'))
+    samples.append(cpu)
+    print(f"sample {i + 1}: {cpu:.1f}%")
+    time.sleep(0.3)
+
+def show_chart():
+    fig, ax = plt.subplots(figsize=(7, 3))
+    ax.plot(samples, marker="o", linewidth=2)
+    ax.set(xlabel="sample #", ylabel="total CPU %",
+           title="CPU usage over 10 samples")
+    ax.grid(True, alpha=0.3)
+    plt.show()
+
+show_chart()
+```
+
+`$(ps -A -o %cpu | awk '...')` runs a real shell pipeline and returns the
+captured stdout as a string — the conversion to `float` happens in
+Python. Wrapping the matplotlib calls in `show_chart()` keeps every
+intermediate `Axes`/`Line2D` object out of the cell output so only the
+final rendered figure is published as an `image/png` MIME bundle.
+
+## Testing
+
+Install the project and its development dependencies in editable mode:
+
+```bash
+pip install -e '.[dev]'
+```
+
+Then start `xonsh` without an rc file, load the xontrib and install the
+kernelspec into the current user's profile:
+
+```sh
+xonsh --no-rc -c "xontrib load jupyter; xonfig jupyter-kernel --user"
+```
+
+Now run a notebook and pick the xonsh kernel:
+
+```sh
+jupyter notebook
+```
+
+Run the unit tests with `pytest`:
+
+```sh
+pytest -v
+```
+
+## Known issues
+
+### Pager-based tools
+
+Some tools like the [AWS CLI](https://aws.amazon.com/cli/) shell out to a
+non-capturable `less` pager by default. Disable pagination at the tool
+level (e.g. `$AWS_PAGER = 'cat'` for AWS CLI).
 
 ## Credits
 

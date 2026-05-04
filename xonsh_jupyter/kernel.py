@@ -1,511 +1,395 @@
-"""Hooks for Jupyter Xonsh Kernel."""
+"""Xonsh Jupyter kernel built on top of ``ipykernel.ipkernel.IPythonKernel``.
 
-import datetime
-import errno
-import hashlib
-import hmac
-import json
+Inheriting from ``IPythonKernel`` (rather than the bare ``Kernel`` base)
+gives us a fully-wired ``ZMQInteractiveShell`` for free: rich
+``execute_result`` / ``display_data`` MIME bundles via IPython's
+``DisplayFormatter``, working ``IPython.display.display(...)``, ipywidgets
+through the global comm-manager, the ``pre_execute`` / ``post_execute``
+event bus that ``matplotlib_inline`` hooks into, and per-cell parent-header
+propagation through the shell's stdout/stderr/displayhook/display_pub.
+
+This module only implements the xonsh-specific bits: bootstrap the xonsh
+session inside the kernel process, route ``do_execute`` through xonsh's
+execer instead of IPython's ``run_cell``, and provide xonsh-aware
+``do_complete`` / ``do_is_complete`` / ``do_inspect`` / ``do_shutdown``.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import inspect as _inspect
 import sys
-import threading
-import uuid
-from argparse import ArgumentParser
-from collections.abc import Set
-from pprint import pformat
-from typing import ClassVar
+import traceback as _tb
+from typing import Any
 
-import zmq
-from xonsh import __version__ as version
+from ipykernel.ipkernel import IPythonKernel
+from xonsh import __version__ as xonsh_version
 from xonsh.built_ins import XSH
 from xonsh.commands_cache import predict_true
 from xonsh.completer import Completer
-from xonsh.main import setup
-from zmq.error import ZMQError
-from zmq.eventloop import ioloop, zmqstream
+from xonsh.main import setup as xonsh_setup
 
 from xonsh_jupyter.shell import JupyterShell
 
-MAX_SIZE = 8388608  # 8 Mb
-DELIM = b"<IDS|MSG>"
+
+def _short_version(v: str) -> str:
+    return ".".join(v.split(".")[:3])
 
 
-def dump_bytes(*args, **kwargs):
-    """Converts an object to JSON and returns the bytes."""
-    return json.dumps(*args, **kwargs).encode("ascii")
+class XonshKernel(IPythonKernel):
+    """Jupyter kernel for the xonsh shell."""
 
+    implementation = "xonsh"
+    implementation_version = xonsh_version
+    banner = "Xonsh is a full-featured and cross-platform Python-powered shell."
 
-def load_bytes(b):
-    """Converts bytes of JSON to an object."""
-    return json.loads(b.decode("utf-8"))
-
-
-def bind(socket, connection, port):
-    """Binds a socket to a port, or a random port if needed. Returns the port."""
-    if port <= 0:
-        return socket.bind_to_random_port(connection)
-    else:
-        socket.bind(f"{connection}:{port}")
-    return port
-
-
-class XonshKernel:
-    """Xonsh xernal for Jupyter"""
-
-    implementation = "Xonsh " + version
-    implementation_version = version
-    language = "xonsh"
-    language_version = version.split(".")[:3]
-    banner = "Xonsh - Python-powered, cross-platform shell"
-    language_info: ClassVar = {
+    # Both fields override traitlets defined on Kernel via traitlets, so they
+    # are intentionally instance-shaped rather than ClassVar.
+    language_info = {  # noqa: RUF012
         "name": "xonsh",
-        "version": version,
-        "pygments_lexer": "xonsh",
-        "codemirror_mode": "shell",
-        "mimetype": "text/x-sh",
+        "version": _short_version(xonsh_version),
+        "mimetype": "text/x-xonsh",
         "file_extension": ".xsh",
+        "pygments_lexer": "xonsh",
+        "codemirror_mode": {"name": "shell"},
     }
-    signature_schemes: ClassVar = {"hmac-sha256": hashlib.sha256}
 
-    def __init__(self, debug_level=0, session_id=None, config=None, **kwargs):
-        """
-        Parameters
-        ----------
-        debug_level : int, optional
-            Integer from 0 (no debugging) to 3 (all debugging), default: 0.
-        session_id : str or None, optional
-            Unique string id representing the kernel session. If None, this will
-            be replaced with a random UUID.
-        config : dict or None, optional
-            Configuration dictionary to start server with. BY default will
-            search the command line for options (if given) or use default
-            configuration.
-        """
-        self.debug_level = debug_level
-        self.session_id = str(uuid.uuid4()) if session_id is None else session_id
-        self._parser = None
-        self.config = self.make_default_config() if config is None else config
+    help_links = [  # noqa: RUF012
+        {"text": "Xonsh tutorial", "url": "https://xon.sh/tutorial.html"},
+        {"text": "Xonsh xontribs", "url": "https://xon.sh/xontribs.html"},
+    ]
 
-        self.exiting = False
-        self.execution_count = 1
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._init_xonsh_session()
         self.completer = Completer()
+        # Route ``sys.displayhook`` to the shell's ZMQShellDisplayHook so
+        # top-level expressions (``2+2`` on its own line) go through
+        # IPython's ``DisplayFormatter`` and get rich MIME bundles
+        # (``text/html`` for DataFrames, ``image/png`` for matplotlib
+        # figures, ``text/markdown`` for ``IPython.display.Markdown``,
+        # etc.) instead of bare ``text/plain: repr(value)``.  IPython's
+        # ``run_cell`` does this swap per cell; since we bypass
+        # ``run_cell``, we set it once at startup.
+        sys.displayhook = self.shell.displayhook
+        # Inject ``get_ipython`` into the xonsh namespace so cells can use
+        # the standard IPython entry point (``get_ipython()``) without an
+        # extra ``from IPython import get_ipython`` import.  IPython's
+        # InteractiveShell normally puts this in the user_ns; xonsh has
+        # its own namespace, so we mirror it explicitly.
+        if XSH.shell is not None and XSH.shell.ctx is not None:
+            XSH.shell.ctx["get_ipython"] = lambda: self.shell
 
-    @property
-    def parser(self):
-        if self._parser is None:
-            p = ArgumentParser("jupyter_kerenel")
-            p.add_argument("-f", dest="config_file", default=None)
-            self._parser = p
-        return self._parser
-
-    def make_default_config(self):
-        """Provides default configuration"""
-        ns, unknown = self.parser.parse_known_args(sys.argv)
-        if ns.config_file is None:
-            self.dprint(1, "Starting xonsh kernel with default args...")
-            config = {
-                "control_port": 0,
-                "hb_port": 0,
-                "iopub_port": 0,
-                "ip": "127.0.0.1",
-                "key": str(uuid.uuid4()),
-                "shell_port": 0,
-                "signature_scheme": "hmac-sha256",
-                "stdin_port": 0,
-                "transport": "tcp",
-            }
-        else:
-            self.dprint(1, "Loading simple_kernel with args:", sys.argv)
-            self.dprint(1, f"Reading config file {ns.config_file!r}...")
-            with open(ns.config_file) as f:
-                config = json.load(f)
-        return config
-
-    def iopub_handler(self, message):
-        """Handles iopub requests."""
-        self.dprint(2, "iopub received:", message)
-
-    def control_handler(self, wire_message):
-        """Handles control requests"""
-        self.dprint(1, "control received:", wire_message)
-        identities, msg = self.deserialize_wire_message(wire_message)
-        if msg["header"]["msg_type"] == "shutdown_request":
-            self.shutdown()
-
-    def stdin_handler(self, message):
-        self.dprint(2, "stdin received:", message)
-
-    def start(self):
-        """Starts the server"""
-        ioloop.install()
-        connection = self.config["transport"] + "://" + self.config["ip"]
-        secure_key = self.config["key"].encode()
-        digestmod = self.signature_schemes[self.config["signature_scheme"]]
-        self.auth = hmac.HMAC(secure_key, digestmod=digestmod)
-
-        # Heartbeat
-        ctx = zmq.Context()
-        self.heartbeat_socket = ctx.socket(zmq.REP)
-        self.config["hb_port"] = bind(
-            self.heartbeat_socket, connection, self.config["hb_port"]
-        )
-
-        # IOPub/Sub, aslo called SubSocketChannel in IPython sources
-        self.iopub_socket = ctx.socket(zmq.PUB)
-        self.config["iopub_port"] = bind(
-            self.iopub_socket, connection, self.config["iopub_port"]
-        )
-        self.iopub_stream = zmqstream.ZMQStream(self.iopub_socket)
-        self.iopub_stream.on_recv(self.iopub_handler)
-
-        # Control
-        self.control_socket = ctx.socket(zmq.ROUTER)
-        self.config["control_port"] = bind(
-            self.control_socket, connection, self.config["control_port"]
-        )
-        self.control_stream = zmqstream.ZMQStream(self.control_socket)
-        self.control_stream.on_recv(self.control_handler)
-
-        # Stdin:
-        self.stdin_socket = ctx.socket(zmq.ROUTER)
-        self.config["stdin_port"] = bind(
-            self.stdin_socket, connection, self.config["stdin_port"]
-        )
-        self.stdin_stream = zmqstream.ZMQStream(self.stdin_socket)
-        self.stdin_stream.on_recv(self.stdin_handler)
-
-        # Shell
-        self.shell_socket = ctx.socket(zmq.ROUTER)
-        self.config["shell_port"] = bind(
-            self.shell_socket, connection, self.config["shell_port"]
-        )
-        self.shell_stream = zmqstream.ZMQStream(self.shell_socket)
-        self.shell_stream.on_recv(self.shell_handler)
-
-        # start up configurtation
-        self.dprint(2, "Config:", json.dumps(self.config))
-        self.dprint(1, "Starting loops...")
-        self.hb_thread = threading.Thread(target=self.heartbeat_loop)
-        self.hb_thread.daemon = True
-        self.hb_thread.start()
-        self.dprint(1, "Ready! Listening...")
-        ioloop.IOLoop.instance().start()
-
-    def shutdown(self):
-        """Shutsdown the kernel"""
-        self.exiting = True
-        ioloop.IOLoop.instance().stop()
-
-    def dprint(self, level, *args, **kwargs):
-        """Print but with debug information."""
-        if level <= self.debug_level:
-            print("DEBUG" + str(level) + ":", *args, file=sys.__stdout__, **kwargs)
-            sys.__stdout__.flush()
-
-    def sign(self, messages):
-        """Sign a message list with a secure signature."""
-        h = self.auth.copy()
-        for m in messages:
-            h.update(m)
-        return h.hexdigest().encode("ascii")
-
-    def new_header(self, message_type):
-        """Make a new header"""
-        return {
-            "date": datetime.datetime.now().isoformat(),
-            "msg_id": str(uuid.uuid4()),
-            "username": "kernel",
-            "session": self.session_id,
-            "msg_type": message_type,
-            "version": "5.0",
-        }
-
-    def send(
-        self,
-        stream,
-        message_type,
-        content=None,
-        parent_header=None,
-        metadata=None,
-        identities=None,
-    ):
-        """Send data to the client via a stream"""
-        header = self.new_header(message_type)
-        if content is None:
-            content = {}
-        if parent_header is None:
-            parent_header = {}
-        if metadata is None:
-            metadata = {}
-
-        messages = list(map(dump_bytes, [header, parent_header, metadata, content]))
-        signature = self.sign(messages)
-        parts = [DELIM, signature, *messages]
-        if identities:
-            parts = identities + parts
-        self.dprint(3, "send parts:", parts)
-        stream.send_multipart(parts)
-        if isinstance(stream, zmqstream.ZMQStream):
-            stream.flush()
-
-    def deserialize_wire_message(self, wire_message):
-        """Split the routing prefix and message frames from a message on the wire"""
-        delim_idx = wire_message.index(DELIM)
-        identities = wire_message[:delim_idx]
-        m_signature = wire_message[delim_idx + 1]
-        msg_frames = wire_message[delim_idx + 2 :]
-
-        keys = ("header", "parent_header", "metadata", "content")
-        m = {k: load_bytes(v) for k, v in zip(keys, msg_frames)}
-        check_sig = self.sign(msg_frames)
-        if check_sig != m_signature:
-            raise ValueError("Signatures do not match")
-        return identities, m
-
-    def run_thread(self, loop, name):
-        """Run main thread"""
-        self.dprint(2, f"Starting loop for {name!r}...")
-        while not self.exiting:
-            self.dprint(2, f"{name} Loop!")
-            try:
-                loop.start()
-            except ZMQError as e:
-                self.dprint(1, f"{name} ZMQError!\n  {e}")
-                if e.errno == errno.EINTR:
-                    continue
-                else:
-                    raise
-            except Exception:
-                self.dprint(2, f"{name} Exception!")
-                if self.exiting:
-                    break
-                else:
-                    raise
-            else:
-                self.dprint(2, f"{name} Break!")
-                break
-
-    def heartbeat_loop(self):
-        """Run heartbeat"""
-        self.dprint(2, "Starting heartbeat loop...")
-        while not self.exiting:
-            self.dprint(3, ".", end="")
-            try:
-                zmq.device(zmq.FORWARDER, self.heartbeat_socket, self.heartbeat_socket)
-            except zmq.ZMQError as e:
-                if e.errno == errno.EINTR:
-                    continue
-                else:
-                    raise
-            else:
-                break
-
-    def shell_handler(self, message):
-        """Dispatch shell messages to their handlers"""
-        self.dprint(1, "received:", message)
-        identities, msg = self.deserialize_wire_message(message)
-        handler = getattr(self, "handle_" + msg["header"]["msg_type"], None)
-        if handler is None:
-            self.dprint(0, "unknown message type:", msg["header"]["msg_type"])
+    def _init_xonsh_session(self) -> None:
+        """Bootstrap the xonsh session inside the kernel process."""
+        if XSH.builtins is not None:
             return
-        handler(msg, identities)
-
-    def handle_execute_request(self, message, identities):
-        """Handle execute request messages."""
-        self.dprint(2, "Xonsh Kernel Executing:", pformat(message["content"]["code"]))
-        # Start by sending busy signal
-        content = {"execution_state": "busy"}
-        self.send(self.iopub_stream, "status", content, parent_header=message["header"])
-
-        # confirm the input that we are executing
-        content = {
-            "execution_count": self.execution_count,
-            "code": message["content"]["code"],
-        }
-        self.send(
-            self.iopub_stream, "execute_input", content, parent_header=message["header"]
+        # Subprocess output is captured by ipykernel's ``OutStream(watchfd=True)``
+        # which dups FD 1/2 onto a pipe and publishes bytes to iopub — this
+        # gives live streaming for long-running commands like ``tail -f``.
+        # Empty PROMPT/RIGHT_PROMPT/BOTTOM_TOOLBAR/TITLE prevent xonsh from
+        # printing prompt strings into cell output.
+        xonsh_setup(
+            shell_type=JupyterShell,
+            env={
+                "PAGER": "cat",
+                "PROMPT": "",
+                "RIGHT_PROMPT": "",
+                "BOTTOM_TOOLBAR": "",
+                "TITLE": "",
+            },
+            aliases={"less": "cat"},
+            xontribs=["coreutils"],
+            threadable_predictors={"git": predict_true, "man": predict_true},
         )
+        cc = XSH.commands_cache
+        if cc is not None and cc.is_only_functional_alias("cat"):
+            XSH.aliases["cat"] = "xonsh-cat"
+            XSH.env["PAGER"] = "xonsh-cat"
 
-        # execute the code
-        metadata = {
-            "dependencies_met": True,
-            "engine": self.session_id,
-            "status": "ok",
-            "started": datetime.datetime.now().isoformat(),
-        }
-        content = self.do_execute(parent_header=message["header"], **message["content"])
-        self.send(
-            self.shell_stream,
-            "execute_reply",
-            content,
-            metadata=metadata,
-            parent_header=message["header"],
-            identities=identities,
-        )
-        self.execution_count += 1
+    # ------------------------------------------------------------------ execute
 
-        # once we are done, send a signal that we are idle
-        content = {"execution_state": "idle"}
-        self.send(self.iopub_stream, "status", content, parent_header=message["header"])
-
-    def do_execute(
+    async def do_execute(  # type: ignore[override]
         self,
-        code="",
-        silent=False,
-        store_history=True,
-        user_expressions=None,
-        allow_stdin=False,
-        parent_header=None,
-        **kwargs,
-    ):
-        """Execute user code."""
-        if len(code.strip()) == 0:
+        code: str,
+        silent: bool,
+        store_history: bool = True,
+        user_expressions: dict | None = None,
+        allow_stdin: bool = False,
+        *,
+        cell_meta: dict | None = None,
+        cell_id: str | None = None,
+    ) -> dict:
+        if not code.strip():
             return {
                 "status": "ok",
                 "execution_count": self.execution_count,
                 "payload": [],
                 "user_expressions": {},
             }
+
+        # IPythonKernel.set_parent → ZMQInteractiveShell.set_parent already
+        # propagates the parent header to displayhook, display_pub, stdout
+        # and stderr.  Fire ``pre_execute`` so any registered hook (e.g.
+        # ``matplotlib_inline.configure_inline_support``) can prepare for
+        # the new cell.
+        from IPython.core.interactiveshell import ExecutionInfo, ExecutionResult
+
+        info = ExecutionInfo(
+            raw_cell=code,
+            store_history=store_history,
+            silent=silent,
+            shell_futures=False,
+            cell_id=cell_id,
+            transformed_cell=code,
+        )
+        result = ExecutionResult(info)
+        result.execution_count = self.execution_count
+
+        self.shell.events.trigger("pre_execute")
+        if not silent:
+            self.shell.events.trigger("pre_run_cell", info)
+
         shell = XSH.shell
-        hist = XSH.history
+        history = XSH.history
         try:
-            shell.default(code, self, parent_header)
-            interrupted = False
-        except KeyboardInterrupt:
-            interrupted = True
+            try:
+                shell.default(code)
+            except KeyboardInterrupt as exc:
+                result.error_in_exec = exc
+                self._kill_orphaned_children()
+                return {
+                    "status": "error",
+                    "execution_count": self.execution_count,
+                    "ename": "KeyboardInterrupt",
+                    "evalue": "interrupted",
+                    "traceback": [],
+                }
+            except BaseException as exc:
+                # Never let user code crash the kernel — surface every
+                # exception, including SystemExit, as an error reply.
+                result.error_in_exec = exc
+                self._kill_orphaned_children()
+                return self._publish_exception(exc, silent=silent)
 
-        if interrupted:
-            return {"status": "abort", "execution_count": self.execution_count}
+            rtn = 0
+            if history is not None and len(history) > 0:
+                rtn = history.rtns[-1] or 0
+            if rtn:
+                result.error_in_exec = RuntimeError(f"NonZeroExitStatus: {rtn}")
+                content = {
+                    "status": "error",
+                    "execution_count": self.execution_count,
+                    "ename": "NonZeroExitStatus",
+                    "evalue": str(rtn),
+                    "traceback": [f"Process exited with non-zero status: {rtn}"],
+                }
+                if not silent:
+                    self.send_response(self.iopub_socket, "error", content)
+                return content
 
-        rtn = 0 if (hist is None or len(hist) == 0) else hist.rtns[-1]
-        if rtn > 0:
-            message = {
-                "status": "error",
-                "execution_count": self.execution_count,
-                "ename": "",
-                "evalue": str(rtn),
-                "traceback": [],
-            }
-        else:
-            message = {
+            return {
                 "status": "ok",
                 "execution_count": self.execution_count,
                 "payload": [],
                 "user_expressions": {},
             }
-        return message
+        finally:
+            # ``post_execute`` is the hook ``matplotlib_inline`` uses to
+            # flush pending figures into the cell.  ``post_run_cell`` is
+            # invoked by libraries that want the cell's
+            # ``ExecutionResult`` (e.g. autoreload).  Trigger both so
+            # nothing is silently dropped because we bypassed
+            # ``shell.run_cell``.
+            self.shell.events.trigger("post_execute")
+            if not silent:
+                self.shell.events.trigger("post_run_cell", result)
 
-    def _respond_in_chunks(self, name, s, chunksize=1024, parent_header=None):
-        if s is None:
+    def _kill_orphaned_children(self) -> None:
+        """Terminate any child processes that survived an interrupt.
+
+        xonsh installs its own SIGINT handler (which kills the foreground
+        subprocess group) only for commands routed through ``PopenThread``
+        — i.e. captured/threadable commands.  Uncaptured runs of
+        unthreadable binaries — e.g. ``tail -f`` started without
+        ``$XONSH_CAPTURE_ALWAYS`` — go through ``subprocess.Popen``
+        directly, so SIGINT raises ``KeyboardInterrupt`` in this thread
+        without touching the child.  The cell would then look "done" while
+        the subprocess kept running orphaned in the kernel.  Reap them
+        explicitly here so an interrupt always means "everything stops".
+        """
+        try:
+            import psutil
+        except ImportError:
             return
-        n = len(s)
-        if n == 0:
+        try:
+            children = psutil.Process().children(recursive=True)
+        except psutil.Error:
             return
-        lower = range(0, n, chunksize)
-        upper = range(chunksize, n + chunksize, chunksize)
-        for lwr, upr in zip(lower, upper):
-            response = {"name": name, "text": s[lwr:upr]}
-            self.send(
-                self.iopub_socket, "stream", response, parent_header=parent_header
-            )
+        for child in children:
+            with contextlib.suppress(psutil.Error):
+                child.terminate()
+        _, alive = psutil.wait_procs(children, timeout=0.5)
+        for child in alive:
+            with contextlib.suppress(psutil.Error):
+                child.kill()
 
-    def handle_complete_request(self, message, identities):
-        """Handles kernel info requests."""
-        content = self.do_complete(
-            message["content"]["code"], message["content"]["cursor_pos"]
-        )
-        self.send(
-            self.shell_stream,
-            "complete_reply",
-            content,
-            parent_header=message["header"],
-            identities=identities,
-        )
+    def _publish_exception(self, exc: BaseException, silent: bool = False) -> dict:
+        tb_lines = _tb.format_exception(type(exc), exc, exc.__traceback__)
+        content = {
+            "status": "error",
+            "execution_count": self.execution_count,
+            "ename": type(exc).__name__,
+            "evalue": str(exc),
+            "traceback": tb_lines,
+        }
+        if not silent:
+            self.send_response(self.iopub_socket, "error", content)
+        return content
 
-    def do_complete(self, code: str, pos: int):
-        """Get completions."""
-        shell = XSH.shell  # type: ignore
-        line_start = code.rfind("\n", 0, pos) + 1
-        line_stop = code.find("\n", pos)
+    # ----------------------------------------------------------------- complete
+
+    def do_complete(self, code: str, cursor_pos: int) -> dict:
+        line_start = code.rfind("\n", 0, cursor_pos) + 1
+        line_stop = code.find("\n", cursor_pos)
         if line_stop == -1:
             line_stop = len(code)
         else:
             line_stop += 1
         line = code[line_start:line_stop]
-        endidx = pos - line_start
-        line_ex: str = XSH.aliases.expand_alias(line, endidx)  # type: ignore
+        endidx = cursor_pos - line_start
+        line_ex: str = XSH.aliases.expand_alias(line, endidx)
 
-        begidx = line[:endidx].rfind(" ") + 1 if line[:endidx].rfind(" ") >= 0 else 0
+        last_space = line[:endidx].rfind(" ")
+        begidx = last_space + 1 if last_space >= 0 else 0
         prefix = line[begidx:endidx]
         expand_offset = len(line_ex) - len(line)
 
         multiline_text = code
-        cursor_index = pos
+        cursor_index = cursor_pos
         if line != line_ex:
-            multiline_text = (
-                multiline_text[:line_start] + line_ex + multiline_text[line_stop:]
-            )
+            multiline_text = code[:line_start] + line_ex + code[line_stop:]
             cursor_index += expand_offset
+
+        ctx = XSH.shell.ctx if XSH.shell is not None else None
 
         rtn, _ = self.completer.complete(
             prefix,
             line_ex,
             begidx + expand_offset,
             endidx + expand_offset,
-            shell.ctx,
+            ctx,
             multiline_text=multiline_text,
             cursor_index=cursor_index,
         )
-        if isinstance(rtn, Set):
-            rtn = list(rtn)
-        message = {
-            "matches": rtn,
+        matches = sorted(rtn) if rtn else []
+        return {
+            "status": "ok",
+            "matches": matches,
             "cursor_start": begidx,
             "cursor_end": endidx,
             "metadata": {},
+        }
+
+    # -------------------------------------------------------------- is_complete
+
+    def do_is_complete(self, code: str) -> dict:
+        if not code.strip():
+            return {"status": "complete", "indent": ""}
+        execer = XSH.execer
+        if execer is None:
+            return {"status": "unknown", "indent": ""}
+        try:
+            execer.parse(code, ctx=set(), mode="exec")
+        except SyntaxError as exc:
+            msg = (str(exc) or "").lower()
+            incomplete_markers = (
+                "eof",
+                "unexpected end",
+                "unterminated",
+                "expected indented block",
+                "incomplete",
+            )
+            if any(m in msg for m in incomplete_markers):
+                return {"status": "incomplete", "indent": ""}
+            return {"status": "invalid"}
+        except Exception:
+            return {"status": "unknown", "indent": ""}
+        return {"status": "complete", "indent": ""}
+
+    # ----------------------------------------------------------------- inspect
+
+    def do_inspect(  # type: ignore[override]
+        self,
+        code: str,
+        cursor_pos: int,
+        detail_level: int = 0,
+        omit_sections: Any = (),
+    ) -> dict:
+        word = _word_under_cursor(code, cursor_pos)
+        text = _xonsh_inspect(word, detail_level)
+        if not text:
+            return {"status": "ok", "found": False, "data": {}, "metadata": {}}
+        return {
             "status": "ok",
+            "found": True,
+            "data": {"text/plain": text},
+            "metadata": {},
         }
-        return message
 
-    def handle_kernel_info_request(self, message, identities):
-        """Handles kernel info requests."""
-        content = {
-            "protocol_version": "5.0",
-            "ipython_version": [1, 1, 0, ""],
-            "language": self.language,
-            "language_version": self.language_version,
-            "implementation": self.implementation,
-            "implementation_version": self.implementation_version,
-            "language_info": self.language_info,
-            "banner": self.banner,
-        }
-        self.send(
-            self.shell_stream,
-            "kernel_info_reply",
-            content,
-            parent_header=message["header"],
-            identities=identities,
-        )
+    # ---------------------------------------------------------------- shutdown
 
-        # once we are done, send a signal that we are idle
-        content = {"execution_state": "idle"}
-        self.send(self.iopub_stream, "status", content, parent_header=message["header"])
+    def do_shutdown(self, restart: bool) -> dict:  # type: ignore[override]
+        with contextlib.suppress(Exception):
+            XSH.unload()
+        return super().do_shutdown(restart)
 
 
-def main():
-    setup(
-        shell_type=JupyterShell,
-        env={"PAGER": "cat"},
-        aliases={"less": "cat"},
-        xontribs=["coreutils"],
-        threadable_predictors={"git": predict_true, "man": predict_true},
-    )
-    if XSH.commands_cache.is_only_functional_alias("cat"):  # type:ignore
-        # this is needed if the underlying system doesn't have cat
-        # we supply our own, because we can
-        XSH.aliases["cat"] = "xonsh-cat"  # type:ignore
-        XSH.env["PAGER"] = "xonsh-cat"  # type:ignore
-    shell = XSH.shell  # type:ignore
-    kernel = shell.kernel = XonshKernel()
-    kernel.start()
+# ----------------------------------------------------------------------- helpers
+
+
+def _word_under_cursor(code: str, pos: int) -> str:
+    if pos > len(code):
+        pos = len(code)
+    left = pos
+    while left > 0 and (code[left - 1].isalnum() or code[left - 1] in "_."):
+        left -= 1
+    right = pos
+    while right < len(code) and (code[right].isalnum() or code[right] in "_."):
+        right += 1
+    return code[left:right]
+
+
+def _xonsh_inspect(word: str, detail_level: int) -> str | None:
+    if not word:
+        return None
+    shell = XSH.shell
+    ctx = shell.ctx if shell is not None and shell.ctx is not None else {}
+    obj = ctx.get(word)
+    if obj is not None:
+        doc = _inspect.getdoc(obj) or repr(obj)
+        if detail_level >= 1:
+            try:
+                src = _inspect.getsource(obj)
+            except (OSError, TypeError):
+                src = None
+            if src:
+                return f"{doc}\n\n--- source ---\n{src}"
+        return doc
+    aliases = XSH.aliases
+    if aliases is not None and word in aliases:
+        return f"alias: {word!r} -> {aliases[word]!r}"
+    return None
+
+
+# -------------------------------------------------------------------------- main
+
+
+def main() -> None:
+    """Entry point for ``python -m xonsh_jupyter.kernel``."""
+    from ipykernel.kernelapp import IPKernelApp
+
+    IPKernelApp.launch_instance(kernel_class=XonshKernel)
 
 
 if __name__ == "__main__":
