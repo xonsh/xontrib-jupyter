@@ -4,7 +4,8 @@ xonsh shell commands in a notebook cell.
 </p>
 
 <p>
-<img src="https://repository-images.githubusercontent.com/471969357/c372c71d-2baa-4804-9e01-d7305316b500">
+<img width="1000" height="563" alt="image" src="https://github.com/user-attachments/assets/d7c96b9c-deb1-46af-9980-d3b6b71dcffb" />
+
 </p>
 
 <p align="center">
